@@ -7,7 +7,7 @@ bash scripts/train_flat_baseline.sh
 bash scripts/train_rough_baseline.sh
 ```
 
-Logs go to `$HUMANOID_PARKOUR_RUNS_ROOT/flat_baseline` and `.../rough_baseline`.
+Logs go to `$HUMANOID_PARKOUR_RUNS_ROOT/flat_baseline/logs/rsl_rl/` (and `.../rough_baseline/logs/rsl_rl/`). Isaac Lab has no `--log_root`; scripts `cd` into the run folder so checkpoints stay on the data disk.
 
 ## Parkour task
 
