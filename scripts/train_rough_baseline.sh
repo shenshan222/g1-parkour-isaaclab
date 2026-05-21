@@ -9,10 +9,11 @@ ensure_package_installed
 
 TASK="Isaac-Velocity-Rough-G1-v0"
 LOG_DIR="${HUMANOID_PARKOUR_RUNS_ROOT}/rough_baseline"
+mkdir -p "${LOG_DIR}"
+cd "${LOG_DIR}"
 
 python "${ISAACLAB_TRAIN}" \
   --task="${TASK}" \
-  --headless \
-  --log_root="${LOG_DIR}"
+  --headless
 
-echo "Logs: ${LOG_DIR}"
+echo "Logs under: ${LOG_DIR}/logs/rsl_rl/"

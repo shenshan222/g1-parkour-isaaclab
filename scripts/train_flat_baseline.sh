@@ -9,10 +9,12 @@ ensure_package_installed
 
 TASK="Isaac-Velocity-Flat-G1-v0"
 LOG_DIR="${HUMANOID_PARKOUR_RUNS_ROOT}/flat_baseline"
+mkdir -p "${LOG_DIR}"
+# Isaac Lab writes to {cwd}/logs/rsl_rl/<experiment_name>/ (no --log_root flag).
+cd "${LOG_DIR}"
 
 python "${ISAACLAB_TRAIN}" \
   --task="${TASK}" \
-  --headless \
-  --log_root="${LOG_DIR}"
+  --headless
 
-echo "Logs: ${LOG_DIR}"
+echo "Logs under: ${LOG_DIR}/logs/rsl_rl/"
