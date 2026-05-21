@@ -33,6 +33,7 @@ Environment (this run):
 | learning_rate     | 0.001 (adaptive schedule)                              |
 | episode_length_s  | 20.0                                                   |
 | experiment_name   | `g1_flat`                                              |
+| policy MLP        | [256, 128, 128] (actor & critic)                       |
 | headless          | yes                                                    |
 | wall_time         | ~40 min (RTX 3090, AutoDL)                             |
 
