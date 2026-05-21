@@ -216,3 +216,19 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- Humanoid Parkour / Isaac Lab training artifacts ---
+logs/
+runs/
+wandb/
+*.pt
+*.pth
+events.out.tfevents.*
+.hydra/
+outputs/
+_checkpoints/
+*.mp4
+*.avi
+report/assets/*.mp4
+report/assets/*.avi
+!report/assets/.gitkeep
