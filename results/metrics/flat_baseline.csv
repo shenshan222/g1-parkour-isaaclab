@@ -1,1 +1,2 @@
-run_name,success_rate,fall_rate,mean_velocity_tracking_error,mean_episode_length,num_episodes
+run_id,task,iterations,mean_reward,mean_episode_length,timeout_rate,fall_rate,track_lin_vel_xy_exp,track_ang_vel_z_exp,error_vel_xy,error_vel_yaw,checkpoint,wall_time_min,notes
+2026-05-21_20-36-57,Isaac-Velocity-Flat-G1-v0,1500,28.77,1000.0,0.9956,0.0044,0.9425,0.7790,0.2087,0.4566,model_1499.pt,40,converged; flat baseline OK
