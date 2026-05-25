@@ -9,11 +9,14 @@ ensure_package_installed
 
 TASK="Isaac-Velocity-Parkour-G1-Play-v0"
 LOG_DIR="${HUMANOID_PARKOUR_RUNS_ROOT}/parkour"
-CHECKPOINT="${CHECKPOINT:-${LOG_DIR}/model_3000.pt}"
+# Default: latest run under logs/rsl_rl (override with CHECKPOINT=.../model_*.pt)
+CHECKPOINT="${CHECKPOINT:-}"
 
-python "${ISAACLAB_PLAY}" \
-  --task="${TASK}" \
-  --checkpoint="${CHECKPOINT}" \
-  --num_envs=16
+PLAY_ARGS=(--task="${TASK}" --num_envs=16)
+if [[ -n "${CHECKPOINT}" ]]; then
+  PLAY_ARGS+=(--checkpoint="${CHECKPOINT}")
+fi
+
+python "${ISAACLAB_PLAY}" "${PLAY_ARGS[@]}"
 
 echo "Used checkpoint: ${CHECKPOINT}"
