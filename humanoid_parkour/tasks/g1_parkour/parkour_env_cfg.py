@@ -1,56 +1,100 @@
 # Copyright (c) Humanoid Parkour Course Project.
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Training environment configuration for G1 parkour velocity tracking.
-
-Inherits ``G1RoughEnvCfg`` (G1 robot, height scanner, rough-style rewards/events).
-Primary override for Phase 2: swap in ``PARKOUR_EASY_TERRAINS_CFG``.
-"""
+"""G1 parkour env cfgs — one train + one play class per difficulty tier."""
 
 from __future__ import annotations
 
+from isaaclab.terrains.terrain_generator_cfg import TerrainGeneratorCfg
 from isaaclab.utils import configclass
 
 from isaaclab_tasks.manager_based.locomotion.velocity.config.g1.rough_env_cfg import G1RoughEnvCfg
 
-from humanoid_parkour.terrains.parkour_terrain_cfg import PARKOUR_EASY_TERRAINS_CFG
+from humanoid_parkour.terrains.parkour_terrain_cfg import (
+    PARKOUR_EASY_TERRAINS_CFG,
+    PARKOUR_MEDIUM_TERRAINS_CFG,
+    PARKOUR_HARD_TERRAINS_CFG,
+)
+
+
+def _terrain_copy(preset: TerrainGeneratorCfg, *, curriculum: bool) -> TerrainGeneratorCfg:
+    return preset.replace(curriculum=curriculum)
+
+
+def _apply_play_settings(cfg: G1RoughEnvCfg, preset: TerrainGeneratorCfg) -> None:
+    """Shared play overrides (mirrors ``G1RoughEnvCfg_PLAY``)."""
+    cfg.scene.num_envs = 50
+    cfg.scene.env_spacing = 2.5
+    cfg.episode_length_s = 40.0
+    cfg.scene.terrain.max_init_terrain_level = None
+    cfg.scene.terrain.terrain_generator = _terrain_copy(preset, curriculum=False)
+    if cfg.scene.terrain.terrain_generator is not None:
+        cfg.scene.terrain.terrain_generator.num_rows = 5
+        cfg.scene.terrain.terrain_generator.num_cols = 5
+    cfg.curriculum.terrain_levels = None
+
+    cfg.commands.base_velocity.ranges.lin_vel_x = (1.0, 1.0)
+    cfg.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
+    cfg.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
+    cfg.commands.base_velocity.ranges.heading = (0.0, 0.0)
+
+    cfg.observations.policy.enable_corruption = False
+    cfg.events.base_external_force_torque = None
+    cfg.events.push_robot = None
+
+
+# -----------------------------------------------------------------------------
+# EASY
+# -----------------------------------------------------------------------------
 
 
 @configclass
-class G1ParkourEnvCfg(G1RoughEnvCfg):
-    """Parkour training: rough G1 stack + easy parkour terrain preset."""
-
+class G1ParkourEasyEnvCfg(G1RoughEnvCfg):
     def __post_init__(self):
         super().__post_init__()
+        self.scene.terrain.terrain_generator = _terrain_copy(PARKOUR_EASY_TERRAINS_CFG, curriculum=True)
 
-        # --- Terrain ---
-        # .replace() avoids sharing one mutable cfg with play/eval code paths.
-        self.scene.terrain.terrain_generator = PARKOUR_EASY_TERRAINS_CFG.replace(curriculum=True)
 
 @configclass
-class G1ParkourEnvCfg_PLAY(G1ParkourEnvCfg):
-    """Parkour play environment: smaller scene, fixed speed, no observation corruption."""
-
+class G1ParkourEasyEnvCfg_PLAY(G1ParkourEasyEnvCfg):
     def __post_init__(self):
         super().__post_init__()
+        _apply_play_settings(self, PARKOUR_EASY_TERRAINS_CFG)
 
-        self.scene.num_envs = 50
-        self.scene.env_spacing = 2.5
-        self.episode_length_s = 40.0
-        self.scene.terrain.terrain_generator = PARKOUR_EASY_TERRAINS_CFG.replace()
-        self.scene.terrain.max_init_terrain_level = None
-        # reduce the number of terrains to save memory
-        if self.scene.terrain.terrain_generator is not None:
-            self.scene.terrain.terrain_generator.num_rows = 5
-            self.scene.terrain.terrain_generator.num_cols = 5
-            self.scene.terrain.terrain_generator.curriculum = False
 
-        self.commands.base_velocity.ranges.lin_vel_x = (1.0, 1.0)
-        self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
-        self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
-        self.commands.base_velocity.ranges.heading = (0.0, 0.0)
-        # disable randomization for play
-        self.observations.policy.enable_corruption = False
-        # remove random pushing
-        self.events.base_external_force_torque = None
-        self.events.push_robot = None
+# -----------------------------------------------------------------------------
+# MEDIUM
+# -----------------------------------------------------------------------------
+
+
+@configclass
+class G1ParkourMediumEnvCfg(G1RoughEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.scene.terrain.terrain_generator = _terrain_copy(PARKOUR_MEDIUM_TERRAINS_CFG, curriculum=True)
+
+
+@configclass
+class G1ParkourMediumEnvCfg_PLAY(G1ParkourMediumEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        _apply_play_settings(self, PARKOUR_MEDIUM_TERRAINS_CFG)
+
+
+# -----------------------------------------------------------------------------
+# HARD
+# -----------------------------------------------------------------------------
+
+
+@configclass
+class G1ParkourHardEnvCfg(G1RoughEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        self.scene.terrain.terrain_generator = _terrain_copy(PARKOUR_HARD_TERRAINS_CFG, curriculum=True)
+
+
+@configclass
+class G1ParkourHardEnvCfg_PLAY(G1ParkourHardEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        _apply_play_settings(self, PARKOUR_HARD_TERRAINS_CFG)
