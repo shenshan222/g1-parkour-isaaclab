@@ -34,8 +34,7 @@ The central design goal of the project is a custom parkour locomotion task for G
 
 Planned task components:
 
-- **Task ID**: `Isaac-Velocity-Parkour-G1-v0`
-- **Play task ID**: `Isaac-Velocity-Parkour-G1-Play-v0`
+- **Task IDs**: `Isaac-Velocity-Parkour-G1-{Easy,Medium,Hard}-v0` (train), `...-Play-v0` (play)
 - **Base parent configuration**: inherit from `G1RoughEnvCfg`
 - **Terrain design**: replace the default rough terrain generator with parkour-specific terrain presets
 - **Difficulty structure**: easy / medium / hard parkour levels
@@ -52,8 +51,7 @@ Planned terrain elements:
 
 Planned implementation files:
 
-- `humanoid_parkour/tasks/g1_parkour/parkour_env_cfg.py`
-- `humanoid_parkour/tasks/g1_parkour/parkour_env_cfg_play.py`
+- `humanoid_parkour/tasks/g1_parkour/parkour_env_cfg.py` (train + play classes per tier)
 - `humanoid_parkour/terrains/parkour_terrain_cfg.py`
 - `humanoid_parkour/tasks/g1_parkour/mdp_overrides.py`
 - `humanoid_parkour/tasks/g1_parkour/agents/rsl_rl_ppo_cfg.py`

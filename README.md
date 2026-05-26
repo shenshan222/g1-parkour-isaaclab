@@ -40,12 +40,15 @@ export HUMANOID_PARKOUR_ROOT=/path/to/g1-parkour-isaaclab
 
 训练日志与 checkpoint 默认写到大盘路径（见 `humanoid_parkour/utils/paths.py`），**不**提交进 Git。
 
-## 任务 ID（规划）
+## 任务 ID
 
-| 任务 | Gym ID |
-|------|--------|
-| 训练 | `Isaac-Velocity-Parkour-G1-v0` |
-| Play | `Isaac-Velocity-Parkour-G1-Play-v0` |
+| 档位 | 训练 | Play |
+|------|------|------|
+| Easy | `Isaac-Velocity-Parkour-G1-Easy-v0` | `Isaac-Velocity-Parkour-G1-Easy-Play-v0` |
+| Medium | `Isaac-Velocity-Parkour-G1-Medium-v0` | `Isaac-Velocity-Parkour-G1-Medium-Play-v0` |
+| Hard | `Isaac-Velocity-Parkour-G1-Hard-v0` | `Isaac-Velocity-Parkour-G1-Hard-Play-v0` |
+
+脚本：`bash scripts/train_parkour.sh [all\|easy\|medium\|hard]`，`bash scripts/play_parkour.sh` 同上。
 
 ## 仓库结构
 
