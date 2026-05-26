@@ -100,7 +100,7 @@ train_one_level() {
   mkdir -p "${log_dir}"
   cd "${log_dir}"
 
-  python "${ISAACLAB_TRAIN}" --task="${task}" --headless "${TRAIN_EXTRA[@]}"
+  run_isaaclab_entrypoint "${ISAACLAB_TRAIN}" --task="${task}" --headless "${TRAIN_EXTRA[@]}"
   echo "Logs under: ${log_dir}/logs/rsl_rl/${experiment_name}/"
 }
 

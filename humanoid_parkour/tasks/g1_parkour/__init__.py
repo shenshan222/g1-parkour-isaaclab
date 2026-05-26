@@ -5,7 +5,7 @@
 
 import gymnasium as gym
 
-from . import agents
+_AGENTS = f"{__name__}.agents"
 
 ##
 # EASY
@@ -17,7 +17,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.parkour_env_cfg:G1ParkourEasyEnvCfg",
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:G1ParkourEasyPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{_AGENTS}.rsl_rl_ppo_cfg:G1ParkourEasyPPORunnerCfg",
     },
 )
 
@@ -27,7 +27,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.parkour_env_cfg:G1ParkourEasyEnvCfg_PLAY",
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:G1ParkourEasyPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{_AGENTS}.rsl_rl_ppo_cfg:G1ParkourEasyPPORunnerCfg",
     },
 )
 
@@ -41,7 +41,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.parkour_env_cfg:G1ParkourMediumEnvCfg",
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:G1ParkourMediumPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{_AGENTS}.rsl_rl_ppo_cfg:G1ParkourMediumPPORunnerCfg",
     },
 )
 
@@ -51,7 +51,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.parkour_env_cfg:G1ParkourMediumEnvCfg_PLAY",
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:G1ParkourMediumPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{_AGENTS}.rsl_rl_ppo_cfg:G1ParkourMediumPPORunnerCfg",
     },
 )
 
@@ -65,7 +65,7 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.parkour_env_cfg:G1ParkourHardEnvCfg",
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:G1ParkourHardPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{_AGENTS}.rsl_rl_ppo_cfg:G1ParkourHardPPORunnerCfg",
     },
 )
 
@@ -75,6 +75,6 @@ gym.register(
     disable_env_checker=True,
     kwargs={
         "env_cfg_entry_point": f"{__name__}.parkour_env_cfg:G1ParkourHardEnvCfg_PLAY",
-        "rsl_rl_cfg_entry_point": f"{agents.__name__}.rsl_rl_ppo_cfg:G1ParkourHardPPORunnerCfg",
+        "rsl_rl_cfg_entry_point": f"{_AGENTS}.rsl_rl_ppo_cfg:G1ParkourHardPPORunnerCfg",
     },
 )
