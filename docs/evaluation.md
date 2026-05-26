@@ -3,8 +3,9 @@
 ## Play / record video
 
 ```bash
-export CHECKPOINT=$HUMANOID_PARKOUR_RUNS_ROOT/parkour/model_3000.pt
-bash scripts/play_parkour.sh
+bash scripts/play_parkour.sh              # all tiers (auto latest checkpoint each)
+bash scripts/play_parkour.sh easy
+CHECKPOINT_MEDIUM=/path/to/model.pt bash scripts/play_parkour.sh medium
 ```
 
 Save videos to `report/assets/` locally; large files stay out of Git (see `.gitignore`).
