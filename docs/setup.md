@@ -34,7 +34,19 @@ Edit defaults in `scripts/_env.sh` for your server.
 ## 4. Verify registration
 
 ```bash
-python -c "import gymnasium as gym; import humanoid_parkour; print('Isaac-Velocity-Parkour-G1-v0' in gym.registry)"
+python -c "
+import gymnasium as gym
+import humanoid_parkour
+ids = [
+    'Isaac-Velocity-Parkour-G1-Easy-v0',
+    'Isaac-Velocity-Parkour-G1-Easy-Play-v0',
+    'Isaac-Velocity-Parkour-G1-Medium-v0',
+    'Isaac-Velocity-Parkour-G1-Medium-Play-v0',
+    'Isaac-Velocity-Parkour-G1-Hard-v0',
+    'Isaac-Velocity-Parkour-G1-Hard-Play-v0',
+]
+print('registered:', all(i in gym.registry for i in ids))
+"
 ```
 
 Requires Isaac Lab / `isaaclab` on `PYTHONPATH`.

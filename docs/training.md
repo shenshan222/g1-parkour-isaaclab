@@ -15,10 +15,19 @@ Logs go to `$HUMANOID_PARKOUR_RUNS_ROOT/flat_baseline/logs/rsl_rl/` (and `.../ro
 2. Train:
 
 ```bash
-bash scripts/train_parkour.sh
+bash scripts/train_parkour.sh          # all tiers (easy → medium → hard)
+bash scripts/train_parkour.sh easy     # single tier
+bash scripts/train_parkour.sh medium hard
 ```
 
-3. Monitor:
+3. Play:
+
+```bash
+bash scripts/play_parkour.sh
+bash scripts/play_parkour.sh easy
+```
+
+4. Monitor:
 
 ```bash
 bash scripts/launch_tensorboard.sh

@@ -2,8 +2,8 @@
 
 ## Task
 
-- Train: `Isaac-Velocity-Parkour-G1-v0`
-- Play: `Isaac-Velocity-Parkour-G1-Play-v0`
+- Train: `Isaac-Velocity-Parkour-G1-{Easy,Medium,Hard}-v0`
+- Play: `Isaac-Velocity-Parkour-G1-{Easy,Medium,Hard}-Play-v0`
 
 ## Terrain levels
 
@@ -17,7 +17,7 @@
 
 ```bash
 bash scripts/train_parkour.sh
-bash scripts/play_parkour.sh   # set CHECKPOINT=...
+bash scripts/play_parkour.sh all   # or: easy | medium | hard
 bash scripts/eval_parkour.sh
 ```
 
