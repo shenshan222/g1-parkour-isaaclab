@@ -150,7 +150,7 @@ PARKOUR_HARD_TERRAINS_CFG = TerrainGeneratorCfg(
         ),
         "boxes": terrain_gen.MeshRandomGridTerrainCfg(
             proportion=0.15,
-            grid_width=0.40,
+            grid_width=0.45,
             grid_height_range=(0.08, 0.25),
             platform_width=1.8,
         ),
