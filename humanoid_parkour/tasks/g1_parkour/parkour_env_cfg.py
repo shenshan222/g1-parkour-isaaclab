@@ -23,14 +23,34 @@ class G1ParkourEnvCfg(G1RoughEnvCfg):
     def __post_init__(self):
         super().__post_init__()
 
-        # --- Terrain (Phase 2 core) ---
+        # --- Terrain ---
         # .replace() avoids sharing one mutable cfg with play/eval code paths.
+        self.scene.terrain.terrain_generator = PARKOUR_EASY_TERRAINS_CFG.replace(curriculum=True)
+
+@configclass
+class G1ParkourEnvCfg_PLAY(G1ParkourEnvCfg):
+    """Parkour play environment: smaller scene, fixed speed, no observation corruption."""
+
+    def __post_init__(self):
+        super().__post_init__()
+
+        self.scene.num_envs = 50
+        self.scene.env_spacing = 2.5
+        self.episode_length_s = 40.0
         self.scene.terrain.terrain_generator = PARKOUR_EASY_TERRAINS_CFG.replace()
+        self.scene.terrain.max_init_terrain_level = None
+        # reduce the number of terrains to save memory
+        if self.scene.terrain.terrain_generator is not None:
+            self.scene.terrain.terrain_generator.num_rows = 5
+            self.scene.terrain.terrain_generator.num_cols = 5
+            self.scene.terrain.terrain_generator.curriculum = False
 
-        # Easy tier: fixed generator difficulty (no row-wise curriculum in terrain mesh).
-        # Disable env terrain-level curriculum so spawn difficulty does not ramp like full rough.
-        self.curriculum.terrain_levels = None
-
-        # Optional later: reward / command tweaks for parkour (keep rough defaults until easy trains).
-        # self.commands.base_velocity.ranges.lin_vel_x = (0.0, 1.0)
-        # self.rewards.feet_air_time.weight = 0.5
+        self.commands.base_velocity.ranges.lin_vel_x = (1.0, 1.0)
+        self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
+        self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
+        self.commands.base_velocity.ranges.heading = (0.0, 0.0)
+        # disable randomization for play
+        self.observations.policy.enable_corruption = False
+        # remove random pushing
+        self.events.base_external_force_torque = None
+        self.events.push_robot = None
