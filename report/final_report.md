@@ -1,5 +1,18 @@
 # Humanoid Parkour — Final Report
 
+## Document map
+
+| Section | Content | Status |
+|---------|---------|--------|
+| §1 Introduction | Project goal and report scope | Complete |
+| §2 Method | Framework, formulation, protocol, baseline setup | Complete |
+| §3 Task and environment design | Parkour task and terrain implementation | Implemented; training results pending |
+| §4 Reference baselines | Flat and rough quantitative results | Complete |
+| §5 Parkour experiments | Training plan, ablations, parkour metrics and media | In progress / placeholder |
+| §6 Discussion and conclusion | Interpretation and next steps | Partial (parkour results pending) |
+
+---
+
 ## 1. Introduction
 
 This project aims to build a parkour-oriented locomotion environment for the Unitree G1 robot in Isaac Lab. The target setting is not generic flat-ground walking, but robust velocity-tracking locomotion over structured obstacles such as stairs, platforms, gaps, and mixed uneven terrain. The final objective is a reproducible training and evaluation pipeline that supports custom parkour terrain design, parkour-specific curriculum learning, quantitative evaluation, and qualitative rollout analysis.
@@ -7,6 +20,8 @@ This project aims to build a parkour-oriented locomotion environment for the Uni
 The underlying task family is manager-based locomotion with velocity tracking. The policy observes proprioceptive state and terrain-related signals, and learns to follow commanded base velocity while maintaining balance and avoiding failure termination. Within this overall project, flat and rough official G1 tasks are used as reference baselines: they validate the training pipeline, provide quantitative comparison points, and motivate why the parkour task should inherit from the rough locomotion configuration rather than from the flat configuration.
 
 This report is therefore organized as a final-form project report. The parkour-related sections are kept in their intended final positions, and any parts that depend on future custom-task training are explicitly marked as placeholders.
+
+---
 
 ## 2. Method
 
@@ -28,7 +43,49 @@ All environments considered in this project belong to the same locomotion and ve
 
 This shared structure is important because it makes the baselines and the future parkour task directly comparable.
 
-### 2.3 Parkour task design (placeholder)
+### 2.3 Experimental protocol
+
+All completed runs were executed on the AutoDL Linux GPU environment with:
+
+- GPU: NVIDIA GeForce RTX 3090
+- Conda environment: `/root/autodl-tmp/isaac_workspace/env_isaaclab`
+- Isaac Lab root: `/root/autodl-tmp/isaac_workspace/IsaacLab`
+- Run storage root: `/root/autodl-tmp/humanoid_parkour_runs`
+
+Training artifacts such as checkpoints, TensorBoard event files, and raw logs were kept on the data disk and were not committed to Git. Only compact summaries, figures, and report assets were kept in the repository.
+
+### 2.4 Reference baseline setup
+
+To support the parkour task, two official Isaac Lab G1 baselines were trained first.
+
+#### Flat reference baseline
+
+- Task ID: `Isaac-Velocity-Flat-G1-v0`
+- PPO policy MLP: `[256, 128, 128]`
+- `num_envs = 4096`
+- `num_steps_per_env = 24`
+- `max_iterations = 1500`
+- `episode_length_s = 20.0`
+
+#### Rough reference baseline
+
+- Task ID: `Isaac-Velocity-Rough-G1-v0`
+- PPO policy MLP: `[512, 256, 128]`
+- `num_envs = 4096`
+- `num_steps_per_env = 24`
+- `max_iterations = 3000`
+- `episode_length_s = 20.0`
+- Terrain generator: `ROUGH_TERRAINS_CFG`
+- Additional sensing: `height_scanner` attached to `torso_link`
+- Curriculum: `terrain_levels_vel`
+
+These baselines are not the final contribution of the project. Their role is to validate the training pipeline and to provide a principled starting point for the parkour environment.
+
+---
+
+## 3. Task and environment design
+
+### 3.1 Parkour task design (placeholder)
 
 The central design goal of the project is a custom parkour locomotion task for G1.
 
@@ -58,47 +115,11 @@ Planned implementation files:
 
 Status: **placeholder; the parkour environment is the main project target, but its custom implementation and training results are not yet finalized.**
 
-### 2.4 Reference baseline setup
+---
 
-To support the parkour task, two official Isaac Lab G1 baselines were trained first.
+## 4. Reference baselines
 
-#### Flat reference baseline
-
-- Task ID: `Isaac-Velocity-Flat-G1-v0`
-- PPO policy MLP: `[256, 128, 128]`
-- `num_envs = 4096`
-- `num_steps_per_env = 24`
-- `max_iterations = 1500`
-- `episode_length_s = 20.0`
-
-#### Rough reference baseline
-
-- Task ID: `Isaac-Velocity-Rough-G1-v0`
-- PPO policy MLP: `[512, 256, 128]`
-- `num_envs = 4096`
-- `num_steps_per_env = 24`
-- `max_iterations = 3000`
-- `episode_length_s = 20.0`
-- Terrain generator: `ROUGH_TERRAINS_CFG`
-- Additional sensing: `height_scanner` attached to `torso_link`
-- Curriculum: `terrain_levels_vel`
-
-These baselines are not the final contribution of the project. Their role is to validate the training pipeline and to provide a principled starting point for the parkour environment.
-
-### 2.5 Experimental protocol
-
-All completed runs were executed on the AutoDL Linux GPU environment with:
-
-- GPU: NVIDIA GeForce RTX 3090
-- Conda environment: `/root/autodl-tmp/isaac_workspace/env_isaaclab`
-- Isaac Lab root: `/root/autodl-tmp/isaac_workspace/IsaacLab`
-- Run storage root: `/root/autodl-tmp/humanoid_parkour_runs`
-
-Training artifacts such as checkpoints, TensorBoard event files, and raw logs were kept on the data disk and were not committed to Git. Only compact summaries, figures, and report assets were kept in the repository.
-
-## 3. Reference Baselines
-
-### 3.1 Flat baseline
+### 4.1 Flat baseline
 
 The flat baseline converged quickly and served as the first full pipeline validation.
 
@@ -123,7 +144,7 @@ Relevant figures:
 - `results/figures/flat_mean_reward.png`
 - `results/figures/flat_episode_length.png`
 
-### 3.2 Rough baseline
+### 4.2 Rough baseline
 
 The rough baseline was intentionally harder and provides the more relevant parent configuration for the future parkour task.
 
@@ -148,7 +169,7 @@ Relevant figures:
 - `results/figures/rough_mean_reward.png`
 - `results/figures/rough_episode_length.png`
 
-### 3.3 Baseline comparison
+### 4.3 Baseline comparison
 
 The comparison confirms that rough terrain is a meaningful difficulty increase rather than a broken setup.
 
@@ -164,9 +185,11 @@ The comparison confirms that rough terrain is a meaningful difficulty increase r
 
 The rough task is therefore the appropriate starting point for parkour. It preserves the same locomotion objective while adding uneven terrain, terrain sensing, and curriculum-based difficulty progression.
 
-## 4. Experiments
+---
 
-### 4.1 Completed experiments
+## 5. Parkour experiments and results
+
+### 5.1 Completed experiments (project-wide)
 
 The completed experiments in the current project stage are:
 
@@ -174,7 +197,7 @@ The completed experiments in the current project stage are:
 - rough reference baseline training
 - qualitative play-video generation for both reference baselines
 
-### 4.2 Parkour training plan (placeholder)
+### 5.2 Parkour training plan (placeholder)
 
 The main project experiments will target the custom parkour environment.
 
@@ -187,7 +210,7 @@ Planned training stages:
 
 Status: **placeholder**
 
-### 4.3 Ablation plan (placeholder)
+### 5.3 Ablation plan (placeholder)
 
 Two ablation groups are planned:
 
@@ -201,9 +224,7 @@ Two ablation groups are planned:
 
 Status: **placeholder**
 
-## 5. Results
-
-### 5.1 Quantitative summaries
+### 5.4 Quantitative summaries
 
 The completed quantitative summaries currently available are stored in:
 
@@ -215,7 +236,7 @@ Parkour and ablation result tables remain placeholders:
 - `results/metrics/parkour_eval.csv` — placeholder
 - `results/tables/ablation_summary.md` — placeholder
 
-### 5.2 Learning curves
+### 5.5 Learning curves
 
 Completed learning curves:
 
@@ -228,7 +249,7 @@ Planned parkour figures:
 - Parkour episode length curve — placeholder
 - Success-rate-by-level figure — placeholder
 
-### 5.3 Videos
+### 5.6 Videos
 
 The currently available videos are reference-baseline videos stored under `report/assets/`.
 
@@ -240,6 +261,8 @@ The currently available videos are reference-baseline videos stored under `repor
 
 These videos currently document the reference baselines. The final version of the project is expected to add parkour-specific rollout videos after the custom environment is trained.
 
+---
+
 ## 6. Discussion
 
 The current results establish a clear and internally consistent progression from flat to rough locomotion. Flat terrain serves as a relatively easy control setting in which the policy quickly converges to near-maximal episode length and very low failure rate. Rough terrain introduces a measurable degradation in reward, tracking quality, and stability, but the training still converges and remains usable as a locomotion prior.
@@ -247,6 +270,8 @@ The current results establish a clear and internally consistent progression from
 This is important because the core project objective is a parkour task rather than a generic locomotion benchmark. A custom parkour environment should not be built on the flat baseline, since flat locomotion lacks terrain sensing and terrain curriculum. The rough baseline already contains the ingredients most relevant for parkour: uneven terrain, height scanning, and learning under terrain-dependent difficulty.
 
 The main limitation of the current report is that the parkour-specific implementation is still incomplete. The report is therefore final in structure but partial in content: the parkour design has a dedicated place in the narrative, while its quantitative results, qualitative rollout evidence, and ablation findings remain placeholders.
+
+---
 
 ## 7. Conclusion
 
