@@ -204,7 +204,7 @@ The completed experiments now include the two reference baselines and three cust
 | Parkour medium | `Isaac-Velocity-Parkour-G1-Medium-v0` | 3000 | `model_2999.pt` |
 | Parkour hard | `Isaac-Velocity-Parkour-G1-Hard-v0` | 4499 | `model_4498.pt` |
 
-Hard was first trained to iteration 2999 and then resumed to iteration 4498 because the initial hard run had the lowest reward and highest instability among the three tiers.
+Hard was first trained to iteration 2999 and then resumed to iteration 4498. The initial hard curve had already started to plateau near iteration 3000, and the resumed segment begins with a visible reward drop before recovering and improving moderately.
 
 ### 5.2 Parkour quantitative summary
 
@@ -221,7 +221,7 @@ The following numbers are final TensorBoard training scalars, not fixed-seed rol
 | Yaw tracking error | 0.6067 rad/s | 0.8445 rad/s | 0.9720 rad/s |
 | Curriculum terrain level scalar | 5.7907 | 5.8001 | 5.6135 |
 
-The results show a clear difficulty gradient. Easy parkour is trainable and even achieves a higher final mean reward than the rough baseline, while maintaining a lower fall rate than rough. Medium introduces gaps and higher obstacles; reward drops and tracking error increases. Hard is the strongest stress test: after resumed training it keeps most episodes alive until timeout, but its reward and velocity-tracking quality remain substantially worse than easy and medium.
+The results show a clear difficulty gradient. Easy parkour is trainable and even achieves a higher final mean reward than the rough baseline, while maintaining a lower fall rate than rough. Medium introduces gaps and higher obstacles; reward drops and tracking error increases. Hard is the strongest stress test. Its initial run reaches a plateau around iteration 2500-3000, and the resumed run only recovers from the restart drop and improves moderately. The final hard policy keeps most episodes alive until timeout, but its reward and velocity-tracking quality remain substantially worse than easy and medium.
 
 ### 5.3 Baseline-to-parkour comparison
 
@@ -297,7 +297,7 @@ The rollout videos are stored under `report/assets/`.
 | Parkour hard 3000 | `report/assets/parkour_hard3000_play.mp4` | Failure/undertrained hard-tier case before resumed training |
 | Parkour hard 4500 | `report/assets/parkour_hard4500_play.mp4` | Hard-tier rollout after resumed training to iteration 4498 |
 
-The hard 3000 checkpoint is used as the failure case because it has lower training reward and higher base-contact termination than the resumed hard checkpoint. This supports the qualitative interpretation that the hard terrain is a real stress test rather than only a cosmetic terrain change.
+The hard 3000 checkpoint is used as the failure case because it represents the hard tier near its first training plateau, before the resumed segment partially recovers and improves. This supports the qualitative interpretation that the hard terrain is a real stress test rather than only a cosmetic terrain change.
 
 ---
 
@@ -307,7 +307,7 @@ The results establish a progression from flat locomotion to rough locomotion and
 
 The custom parkour results show that the inherited rough G1 configuration is a viable base for path-B parkour. Easy parkour converges reliably and keeps the fall rate below the rough baseline, despite using structured obstacles instead of generic rough terrain. Medium and hard then expose the expected degradation as gaps, obstacle heights, and platform constraints increase.
 
-The hard result is the most informative failure boundary. Resuming hard training from 3000 to 4498 iterations improves stability relative to the initial hard checkpoint, but the final policy still has the worst reward and tracking error. This suggests that the terrain generator is difficult enough to stress the inherited rough reward. Further improvement likely requires either longer training, tuned command ranges, or parkour-specific reward/termination terms such as forward progress, foothold safety, or obstacle-passing success.
+The hard result is the most informative failure boundary. The reward curve reaches an early plateau around iteration 2500-3000. The resumed segment then shows an initial reward drop, followed by partial recovery and moderate improvement to about 14-15 mean reward. This is not the same pattern as easy or medium, which show stronger sustained improvement by iteration 3000. The hard result is therefore not merely a longer-training problem; it suggests that the inherited velocity-tracking objective is insufficient for the hardest terrain. Further improvement likely requires tuned command ranges, staged hard-terrain curriculum, or parkour-specific reward/termination terms such as forward progress, foothold safety, or obstacle-passing success.
 
 The main limitation is now the scope of the evaluation rather than the absence of evaluation. The fixed-checkpoint evaluator measures timeout success, base-contact failure, episode length, and velocity-command tracking error. It does not yet measure semantic obstacle completion, such as explicitly passing a named gap or stair sequence. Therefore, the reported success rate should be read as locomotion survival over parkour terrain, not as a full obstacle-by-obstacle parkour score.
 

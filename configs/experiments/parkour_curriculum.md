@@ -23,6 +23,10 @@
 
 Run artifacts are stored under `$HUMANOID_PARKOUR_RUNS_ROOT/parkour_{easy,medium,hard}/logs/rsl_rl/g1_parkour_{easy,medium,hard}/`.
 
+## Hard resume interpretation
+
+The hard initial run starts to plateau around iteration 2500-3000. The resumed segment begins with a visible reward drop, then recovers and improves moderately to the final checkpoint. This supports the conclusion that hard terrain is constrained by the inherited velocity-tracking formulation, not only by insufficient training time.
+
 ## Evaluation
 
 ```bash

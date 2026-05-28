@@ -14,7 +14,7 @@ Current table combines training-summary metrics with fixed-checkpoint rollout su
 
 - Flat to rough validates the environment-complexity effect: rough terrain increases falls and velocity-tracking error.
 - Easy to medium to hard acts as a terrain-difficulty ablation over the custom parkour generator.
-- The hard tier is the clearest stress test: it maintains high timeout rate after resumed training, but reward and tracking quality remain substantially worse than easy/medium.
+- The hard tier is the clearest stress test: reward plateaus near 3000 iterations, resume starts with a visible drop, and the later improvement is moderate rather than a clear new upward trend.
 
 ## Pending formal ablations
 
