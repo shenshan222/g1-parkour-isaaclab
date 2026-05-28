@@ -1,0 +1,4 @@
+run_name,run_id,task,iterations,mean_reward,mean_episode_length,timeout_rate,fall_rate,track_lin_vel_xy_exp,error_vel_xy,error_vel_yaw,curriculum_terrain_levels,checkpoint,notes
+parkour_easy,2026-05-26_15-58-21,Isaac-Velocity-Parkour-G1-Easy-v0,3000,30.7019,983.20,0.9600,0.0400,0.8741,0.3050,0.6067,5.7907,model_2999.pt,custom easy parkour terrain converged; lower tracking error than rough baseline
+parkour_medium,2026-05-26_17-39-43,Isaac-Velocity-Parkour-G1-Medium-v0,3000,20.9778,988.14,0.9325,0.0675,0.8539,0.3590,0.8445,5.8001,model_2999.pt,medium terrain adds gaps and higher obstacles; stable but harder than easy
+parkour_hard,2026-05-27_09-47-16,Isaac-Velocity-Parkour-G1-Hard-v0,4499,14.4443,977.22,0.9273,0.0727,0.7836,0.4689,0.9720,5.6135,model_4498.pt,hard terrain resumed from 3000 iterations; stability improved over initial hard checkpoint

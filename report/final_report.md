@@ -6,10 +6,10 @@
 |---------|---------|--------|
 | §1 Introduction | Project goal and report scope | Complete |
 | §2 Method | Framework, formulation, protocol, baseline setup | Complete |
-| §3 Task and environment design | Parkour task and terrain implementation | Implemented; training results pending |
+| §3 Task and environment design | Parkour task and terrain implementation | Complete |
 | §4 Reference baselines | Flat and rough quantitative results | Complete |
-| §5 Parkour experiments | Training plan, ablations, parkour metrics and media | In progress / placeholder |
-| §6 Discussion and conclusion | Interpretation and next steps | Partial (parkour results pending) |
+| §5 Parkour experiments | Training results, difficulty comparison, remaining evaluation gaps | Mostly complete; rollout eval/media pending |
+| §6 Discussion and conclusion | Interpretation and next steps | Updated with parkour training results |
 
 ---
 
@@ -19,7 +19,7 @@ This project aims to build a parkour-oriented locomotion environment for the Uni
 
 The underlying task family is manager-based locomotion with velocity tracking. The policy observes proprioceptive state and terrain-related signals, and learns to follow commanded base velocity while maintaining balance and avoiding failure termination. Within this overall project, flat and rough official G1 tasks are used as reference baselines: they validate the training pipeline, provide quantitative comparison points, and motivate why the parkour task should inherit from the rough locomotion configuration rather than from the flat configuration.
 
-This report is therefore organized as a final-form project report. The parkour-related sections are kept in their intended final positions, and any parts that depend on future custom-task training are explicitly marked as placeholders.
+This report is organized as a final-form project report. The parkour environment has now been implemented and trained across three difficulty tiers. The remaining gaps are fixed-checkpoint rollout evaluation, parkour video capture, and formal reward/observation ablations.
 
 ---
 
@@ -85,35 +85,42 @@ These baselines are not the final contribution of the project. Their role is to 
 
 ## 3. Task and environment design
 
-### 3.1 Parkour task design (placeholder)
+### 3.1 Parkour task design
 
-The central design goal of the project is a custom parkour locomotion task for G1.
+The custom parkour task is implemented as a direct extension of Isaac Lab's G1 rough velocity-tracking environment. This choice keeps the same locomotion objective and PPO setup as the rough baseline while replacing the default rough terrain generator with structured obstacle terrains.
 
-Planned task components:
+Implemented task components:
 
-- **Task IDs**: `Isaac-Velocity-Parkour-G1-{Easy,Medium,Hard}-v0` (train), `...-Play-v0` (play)
-- **Base parent configuration**: inherit from `G1RoughEnvCfg`
-- **Terrain design**: replace the default rough terrain generator with parkour-specific terrain presets
-- **Difficulty structure**: easy / medium / hard parkour levels
-- **Training strategy**: curriculum over terrain difficulty
-- **Evaluation outputs**: success rate, fall rate, tracking quality, and rollout videos
+- **Task IDs**: `Isaac-Velocity-Parkour-G1-{Easy,Medium,Hard}-v0` for training and `...-Play-v0` for visualization.
+- **Base parent configuration**: all tiers inherit from `G1RoughEnvCfg`, preserving the rough-terrain observation structure and height scanner.
+- **Terrain design**: `PARKOUR_EASY_TERRAINS_CFG`, `PARKOUR_MEDIUM_TERRAINS_CFG`, and `PARKOUR_HARD_TERRAINS_CFG` replace the default rough terrain generator.
+- **Training strategy**: each tier enables terrain curriculum through the inherited rough locomotion curriculum mechanism.
+- **Play settings**: play environments reduce parallel environment count, disable observation corruption and push events, and use fixed forward velocity commands for clearer rollout inspection.
 
-Planned terrain elements:
+Implementation files:
 
-- stairs
-- short platforms
-- mild height changes
-- controlled gaps
-- mixed obstacle sequences
-
-Planned implementation files:
-
-- `humanoid_parkour/tasks/g1_parkour/parkour_env_cfg.py` (train + play classes per tier)
+- `humanoid_parkour/tasks/g1_parkour/parkour_env_cfg.py`
 - `humanoid_parkour/terrains/parkour_terrain_cfg.py`
-- `humanoid_parkour/tasks/g1_parkour/mdp_overrides.py`
+- `humanoid_parkour/tasks/g1_parkour/__init__.py`
 - `humanoid_parkour/tasks/g1_parkour/agents/rsl_rl_ppo_cfg.py`
 
-Status: **placeholder; the parkour environment is the main project target, but its custom implementation and training results are not yet finalized.**
+### 3.2 Terrain difficulty tiers
+
+The three parkour tiers are independent terrain-generator presets rather than a single terrain with one scalar knob. This makes each tier interpretable and supports direct difficulty comparison.
+
+| Tier | Main terrain elements | Difficulty design |
+|------|-----------------------|-------------------|
+| Easy | Pyramid stairs, inverted stairs, random box grid, random rough terrain, slopes | Conservative obstacle heights; no gap terrain |
+| Medium | Easy elements plus gap terrain | Higher stairs/boxes/roughness and controlled gaps |
+| Hard | Stairs, boxes, rough terrain, gaps, slopes | Taller obstacles, wider gaps, narrower platforms, stronger terrain stress |
+
+This design satisfies the path-B requirement of defining at least three increasing parkour terrain difficulty levels. It also gives a usable terrain-ablation axis: flat, rough, parkour easy, parkour medium, and parkour hard.
+
+### 3.3 Scope of custom MDP terms
+
+The current trained parkour policies use the inherited G1 rough locomotion reward, observation, termination, and curriculum terms. Placeholder hooks for future parkour-specific rewards and termination checks exist in `humanoid_parkour/tasks/g1_parkour/mdp_overrides.py`, but they are not used in the completed training runs.
+
+This means the current contribution is primarily terrain and task-configuration design. Reward/observation ablations remain future work and should not be interpreted as completed experiments in this report.
 
 ---
 
@@ -189,65 +196,74 @@ The rough task is therefore the appropriate starting point for parkour. It prese
 
 ## 5. Parkour experiments and results
 
-### 5.1 Completed experiments (project-wide)
+### 5.1 Completed experiments
 
-The completed experiments in the current project stage are:
+The completed experiments now include the two reference baselines and three custom parkour training runs. The parkour runs use the custom easy, medium, and hard terrain generators described in Section 3.
 
-- flat reference baseline training
-- rough reference baseline training
-- qualitative play-video generation for both reference baselines
+| Experiment | Task | Iterations | Final checkpoint |
+|------------|------|------------|------------------|
+| Parkour easy | `Isaac-Velocity-Parkour-G1-Easy-v0` | 3000 | `model_2999.pt` |
+| Parkour medium | `Isaac-Velocity-Parkour-G1-Medium-v0` | 3000 | `model_2999.pt` |
+| Parkour hard | `Isaac-Velocity-Parkour-G1-Hard-v0` | 4499 | `model_4498.pt` |
 
-### 5.2 Parkour training plan (placeholder)
+Hard was first trained to iteration 2999 and then resumed to iteration 4498 because the initial hard run had the lowest reward and highest instability among the three tiers.
 
-The main project experiments will target the custom parkour environment.
+### 5.2 Parkour quantitative summary
 
-Planned training stages:
+The following numbers are final TensorBoard training scalars, not fixed-seed rollout evaluation results. They are still useful for comparing convergence and relative terrain difficulty because they use the same task family and logging definitions as the flat and rough baselines.
 
-1. **Parkour-easy**: conservative obstacle configuration for the first successful run
-2. **Parkour curriculum**: easy / medium / hard terrain levels
-3. **Parkour play**: qualitative rollout recording on trained checkpoints
-4. **Parkour evaluation**: metrics export to CSV for final comparison
+| Metric | Easy | Medium | Hard |
+|--------|------|--------|------|
+| Mean reward | 30.70 | 20.98 | 14.44 |
+| Mean episode length | 983.2 | 988.1 | 977.2 |
+| Timeout rate | 96.00% | 93.25% | 92.73% |
+| Base-contact/fall rate | 4.00% | 6.75% | 7.27% |
+| XY velocity tracking reward | 0.8741 | 0.8539 | 0.7836 |
+| XY velocity tracking error | 0.3050 m/s | 0.3590 m/s | 0.4689 m/s |
+| Yaw tracking error | 0.6067 rad/s | 0.8445 rad/s | 0.9720 rad/s |
+| Curriculum terrain level scalar | 5.7907 | 5.8001 | 5.6135 |
 
-Status: **placeholder**
+The results show a clear difficulty gradient. Easy parkour is trainable and even achieves a higher final mean reward than the rough baseline, while maintaining a lower fall rate than rough. Medium introduces gaps and higher obstacles; reward drops and tracking error increases. Hard is the strongest stress test: after resumed training it keeps most episodes alive until timeout, but its reward and velocity-tracking quality remain substantially worse than easy and medium.
 
-### 5.3 Ablation plan (placeholder)
+### 5.3 Baseline-to-parkour comparison
 
-Two ablation groups are planned:
+| Metric | Flat | Rough | Parkour easy | Parkour medium | Parkour hard |
+|--------|------|-------|--------------|----------------|--------------|
+| Mean reward | 28.77 | 24.01 | 30.70 | 20.98 | 14.44 |
+| Mean episode length | 1000.0 | 984.5 | 983.2 | 988.1 | 977.2 |
+| Fall rate | 0.44% | 5.41% | 4.00% | 6.75% | 7.27% |
+| XY tracking error | 0.2087 m/s | 0.3407 m/s | 0.3050 m/s | 0.3590 m/s | 0.4689 m/s |
 
-1. **Terrain ablation**
-   - easy-only vs. multi-level curriculum
-   - reduced obstacle difficulty vs. full parkour terrain
+This comparison supports two observations. First, rough terrain is a useful parent configuration: parkour easy starts from the same rough-terrain sensing and curriculum structure and remains stable. Second, the custom hard terrain is meaningfully harder than the official rough baseline, especially in tracking error and reward.
 
-2. **Reward / observation ablation**
-   - with vs. without selected parkour-specific reward terms
-   - with vs. without terrain-sensitive observation adjustments
+### 5.4 Difficulty ablation
 
-Status: **placeholder**
+The current completed ablation is a terrain-difficulty ablation over the environment generator. The independent variables are obstacle type and terrain severity: easy removes gaps, medium adds gaps and increases obstacle height, and hard further widens gaps, increases obstacle height, and narrows safe platforms.
 
-### 5.4 Quantitative summaries
+| Ablation axis | Evidence | Result |
+|---------------|----------|--------|
+| Flat vs. rough terrain | Official Isaac Lab baselines | Fall rate increases from 0.44% to 5.41%; XY tracking error increases from 0.2087 to 0.3407 m/s |
+| Easy vs. medium vs. hard parkour terrain | Custom parkour runs | Fall rate increases from 4.00% to 6.75% to 7.27%; XY tracking error increases from 0.3050 to 0.3590 to 0.4689 m/s |
 
-The completed quantitative summaries currently available are stored in:
+Reward/observation ablations have not been run yet. The placeholder `mdp_overrides.py` file should be treated as planned extension work rather than a completed ablation.
+
+### 5.5 Result files and figures
+
+Quantitative result files:
 
 - `results/metrics/flat_baseline.csv`
 - `results/metrics/rough_baseline.csv`
+- `results/metrics/parkour_training_summary.csv`
+- `results/tables/ablation_summary.md`
 
-Parkour and ablation result tables remain placeholders:
+`results/metrics/parkour_eval.csv` is reserved for future fixed-checkpoint rollout evaluation and currently should not be used as the source of success-rate claims.
 
-- `results/metrics/parkour_eval.csv` — placeholder
-- `results/tables/ablation_summary.md` — placeholder
-
-### 5.5 Learning curves
-
-Completed learning curves:
+Learning-curve figures:
 
 - Flat: `results/figures/flat_mean_reward.png`, `results/figures/flat_episode_length.png`
 - Rough: `results/figures/rough_mean_reward.png`, `results/figures/rough_episode_length.png`
-
-Planned parkour figures:
-
-- Parkour reward curve — placeholder
-- Parkour episode length curve — placeholder
-- Success-rate-by-level figure — placeholder
+- Parkour: `results/figures/parkour_mean_reward.png`
+- Parkour episode length by tier: `results/figures/parkour_easy_episode_length.png`, `results/figures/parkour_medium_episode_length.png`, `results/figures/parkour_hard_episode_length.png`
 
 ### 5.6 Videos
 
@@ -257,28 +273,30 @@ The currently available videos are reference-baseline videos stored under `repor
 |------|------|-------------|
 | Flat baseline play | `report/assets/flat_play.mp4` | Stable velocity tracking on flat terrain with minimal falls |
 | Rough baseline play | `report/assets/rough_play.mp4` | Locomotion on procedural rough terrain with visibly higher difficulty |
-| Parkour play | `report/assets/parkour_play.mp4` | Placeholder |
 
-These videos currently document the reference baselines. The final version of the project is expected to add parkour-specific rollout videos after the custom environment is trained.
+Parkour-specific rollout videos have not yet been captured into `report/assets/`. The highest-priority missing media are one successful easy or medium parkour rollout and one hard-tier failure or near-failure case for qualitative analysis.
 
 ---
 
 ## 6. Discussion
 
-The current results establish a clear and internally consistent progression from flat to rough locomotion. Flat terrain serves as a relatively easy control setting in which the policy quickly converges to near-maximal episode length and very low failure rate. Rough terrain introduces a measurable degradation in reward, tracking quality, and stability, but the training still converges and remains usable as a locomotion prior.
+The results establish a progression from flat locomotion to rough locomotion and then to structured parkour terrain. Flat terrain remains the easiest setting, with near-perfect timeout rate and the lowest tracking error. Rough terrain increases failure rate and tracking error, which confirms that terrain complexity is visible in the training metrics.
 
-This is important because the core project objective is a parkour task rather than a generic locomotion benchmark. A custom parkour environment should not be built on the flat baseline, since flat locomotion lacks terrain sensing and terrain curriculum. The rough baseline already contains the ingredients most relevant for parkour: uneven terrain, height scanning, and learning under terrain-dependent difficulty.
+The custom parkour results show that the inherited rough G1 configuration is a viable base for path-B parkour. Easy parkour converges reliably and keeps the fall rate below the rough baseline, despite using structured obstacles instead of generic rough terrain. Medium and hard then expose the expected degradation as gaps, obstacle heights, and platform constraints increase.
 
-The main limitation of the current report is that the parkour-specific implementation is still incomplete. The report is therefore final in structure but partial in content: the parkour design has a dedicated place in the narrative, while its quantitative results, qualitative rollout evidence, and ablation findings remain placeholders.
+The hard result is the most informative failure boundary. Resuming hard training from 3000 to 4498 iterations improves stability relative to the initial hard checkpoint, but the final policy still has the worst reward and tracking error. This suggests that the terrain generator is difficult enough to stress the inherited rough reward. Further improvement likely requires either longer training, tuned command ranges, or parkour-specific reward/termination terms such as forward progress, foothold safety, or obstacle-passing success.
+
+The main limitation is evaluation. The current tables use training scalars, not a separate fixed-seed rollout evaluator. Therefore, this report can defensibly claim that the three parkour tiers were implemented and trained, and that their training metrics show increasing difficulty. It should not yet claim formal task success rate or obstacle pass rate until `scripts/eval_parkour.sh` is replaced with a real rollout evaluation driver.
 
 ---
 
 ## 7. Conclusion
 
-This project is centered on building a custom parkour locomotion environment for the Unitree G1 robot in Isaac Lab.
+This project built and trained a custom parkour locomotion setup for the Unitree G1 robot in Isaac Lab under path B.
 
-- The completed flat baseline verified that the training, logging, checkpointing, and visualization workflow are correct.
-- The completed rough baseline confirmed that the same pipeline remains effective under more difficult terrain, while also revealing the expected degradation in stability and tracking quality.
-- Together, these baselines provide the technical foundation and comparison reference for the intended parkour task.
+- The flat baseline verified the training, logging, checkpointing, and visualization workflow.
+- The rough baseline confirmed that the pipeline remains effective with terrain sensing and curriculum.
+- The custom parkour environment adds three terrain difficulty tiers and trains policies for easy, medium, and hard obstacle settings.
+- The parkour metrics show a clear difficulty gradient: fall rate and tracking error increase from easy to medium to hard, while reward decreases.
 
-The next milestone is to implement a minimal trainable parkour-easy environment, train it successfully, and then extend it into a full parkour curriculum with parkour-specific evaluation metrics, videos, and ablation studies.
+The remaining work is to run fixed-checkpoint parkour rollout evaluation, capture parkour success and failure videos, and complete formal reward/observation ablations.
