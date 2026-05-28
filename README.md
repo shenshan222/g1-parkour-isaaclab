@@ -35,7 +35,6 @@ export HUMANOID_PARKOUR_ROOT=/path/to/g1-parkour-isaaclab
 | Parkour 训练 | `bash scripts/train_parkour.sh` |
 | Play / 录视频 | `bash scripts/play_parkour.sh` |
 | 评估指标 | `bash scripts/eval_parkour.sh` |
-| 导出策略 | `bash scripts/export_policy.sh` |
 | TensorBoard | `bash scripts/launch_tensorboard.sh` |
 
 训练日志与 checkpoint 默认写到大盘路径（见 `humanoid_parkour/utils/paths.py`），**不**提交进 Git。

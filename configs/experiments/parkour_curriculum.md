@@ -1,36 +1,40 @@
-# Parkour curriculum experiment
+# Parkour terrain experiment
 
-## Task
+## Task IDs
 
 - Train: `Isaac-Velocity-Parkour-G1-{Easy,Medium,Hard}-v0`
 - Play: `Isaac-Velocity-Parkour-G1-{Easy,Medium,Hard}-Play-v0`
 
-## Terrain levels
+## Terrain tiers
 
-| Level | Config symbol | Description |
-|-------|---------------|-------------|
-| 0 | `PARKOUR_EASY_TERRAINS_CFG` | Stairs, mild slopes |
-| 1 | `PARKOUR_MEDIUM_TERRAINS_CFG` | Gaps, platforms |
-| 2 | `PARKOUR_HARD_TERRAINS_CFG` | Narrow gaps, high steps |
+| Tier | Config symbol | Description |
+|------|---------------|-------------|
+| Easy | `PARKOUR_EASY_TERRAINS_CFG` | Stairs, random boxes, rough terrain, slopes; no gap terrain |
+| Medium | `PARKOUR_MEDIUM_TERRAINS_CFG` | Adds gaps and increases obstacle height |
+| Hard | `PARKOUR_HARD_TERRAINS_CFG` | Wider gaps, higher obstacles, narrower platforms |
 
-## Command
+## Training runs
+
+| Tier | Run ID | Iterations | Final checkpoint |
+|------|--------|------------|------------------|
+| Easy | `2026-05-26_15-58-21` | 3000 | `model_2999.pt` |
+| Medium | `2026-05-26_17-39-43` | 3000 | `model_2999.pt` |
+| Hard | `2026-05-27_09-47-16` | 4499 | `model_4498.pt` |
+
+Run artifacts are stored under `$HUMANOID_PARKOUR_RUNS_ROOT/parkour_{easy,medium,hard}/logs/rsl_rl/g1_parkour_{easy,medium,hard}/`.
+
+## Evaluation
 
 ```bash
-bash scripts/train_parkour.sh
-bash scripts/play_parkour.sh all   # or: easy | medium | hard
-bash scripts/eval_parkour.sh
+NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_parkour.sh all
 ```
 
-## Hyperparameters (fill after first run)
+Current rollout success rates:
 
-| Field | Value |
-|-------|-------|
-| num_envs | TBD |
-| max_iterations | TBD |
-| curriculum | terrain row 0 → 2 |
-| log_dir | `$HUMANOID_PARKOUR_RUNS_ROOT/parkour` |
+| Tier | Success rate | Fall rate |
+|------|--------------|-----------|
+| Easy | 100.00% | 0.00% |
+| Medium | 95.31% | 4.69% |
+| Hard | 92.19% | 7.81% |
 
-## Observations
-
-- Success rate by terrain level: see `results/metrics/parkour_eval.csv`
-- Notes: TBD
+Detailed metrics are in `results/metrics/parkour_eval.csv`.

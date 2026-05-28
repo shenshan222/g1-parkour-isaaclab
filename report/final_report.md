@@ -116,11 +116,9 @@ The three parkour tiers are independent terrain-generator presets rather than a 
 
 This design satisfies the path-B requirement of defining at least three increasing parkour terrain difficulty levels. It also gives a usable terrain-ablation axis: flat, rough, parkour easy, parkour medium, and parkour hard.
 
-### 3.3 Scope of custom MDP terms
+### 3.3 Scope of reward and termination terms
 
-The current trained parkour policies use the inherited G1 rough locomotion reward, observation, termination, and curriculum terms. Placeholder hooks for future parkour-specific rewards and termination checks exist in `humanoid_parkour/tasks/g1_parkour/mdp_overrides.py`, but they are not used in the completed training runs.
-
-This means the current contribution is primarily terrain and task-configuration design. Reward/observation ablations remain future work and should not be interpreted as completed experiments in this report.
+The current trained parkour policies use the inherited G1 rough locomotion reward, observation, termination, and curriculum terms. The project contribution is therefore focused on terrain design, task registration, training, rollout evaluation, and reportable artifacts rather than on a new reward formulation. Reward/observation ablations remain future work and are not claimed as completed experiments in this report.
 
 ---
 
@@ -245,7 +243,7 @@ The current completed ablation is a terrain-difficulty ablation over the environ
 | Flat vs. rough terrain | Official Isaac Lab baselines | Fall rate increases from 0.44% to 5.41%; XY tracking error increases from 0.2087 to 0.3407 m/s |
 | Easy vs. medium vs. hard parkour terrain | Custom parkour runs | Fall rate increases from 4.00% to 6.75% to 7.27%; XY tracking error increases from 0.3050 to 0.3590 to 0.4689 m/s |
 
-Reward/observation ablations have not been run yet. The placeholder `mdp_overrides.py` file should be treated as planned extension work rather than a completed ablation.
+Reward/observation ablations have not been run yet, so the completed ablation-style evidence is the terrain difficulty comparison.
 
 ### 5.5 Fixed-checkpoint rollout evaluation
 

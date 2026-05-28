@@ -16,7 +16,7 @@ g1-parkour-isaaclab/
 ├── scripts/                   # Bash wrappers → Isaac Lab train/play
 ├── configs/                   # Experiment design (Markdown, not Python)
 ├── results/                   # Small CSV / figures / tables — commit
-├── report/                    # Course report — commit (not large videos)
+├── report/                    # Course report and selected rollout videos
 └── docs/                      # How to use the repo
 ```
 
@@ -26,8 +26,8 @@ g1-parkour-isaaclab/
 |----------|------------------|
 | Checkpoints `*.pt` | `$HUMANOID_PARKOUR_RUNS_ROOT` |
 | TensorBoard events | under runs / logs |
-| Raw training logs | `logs/`, `runs/` |
-| Large videos | `report/assets/*.mp4` (gitignored) |
+| Raw training logs | `logs/`, `runs/`, `outputs/` |
+| Raw/unselected videos | `$HUMANOID_PARKOUR_RUNS_ROOT/**/videos/` |
 
 ## Isaac Lab boundary
 
