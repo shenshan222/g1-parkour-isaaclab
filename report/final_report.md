@@ -8,7 +8,7 @@
 | §2 Method | Framework, formulation, protocol, baseline setup | Complete |
 | §3 Task and environment design | Parkour task and terrain implementation | Complete |
 | §4 Reference baselines | Flat and rough quantitative results | Complete |
-| §5 Parkour experiments | Training results, difficulty comparison, remaining evaluation gaps | Mostly complete; rollout eval/media pending |
+| §5 Parkour experiments | Training results, rollout evaluation, difficulty comparison, media | Complete for initial submission |
 | §6 Discussion and conclusion | Interpretation and next steps | Updated with parkour training results |
 
 ---
@@ -19,7 +19,7 @@ This project aims to build a parkour-oriented locomotion environment for the Uni
 
 The underlying task family is manager-based locomotion with velocity tracking. The policy observes proprioceptive state and terrain-related signals, and learns to follow commanded base velocity while maintaining balance and avoiding failure termination. Within this overall project, flat and rough official G1 tasks are used as reference baselines: they validate the training pipeline, provide quantitative comparison points, and motivate why the parkour task should inherit from the rough locomotion configuration rather than from the flat configuration.
 
-This report is organized as a final-form project report. The parkour environment has now been implemented and trained across three difficulty tiers. The remaining gaps are fixed-checkpoint rollout evaluation, parkour video capture, and formal reward/observation ablations.
+This report is organized as a final-form project report. The parkour environment has now been implemented and trained across three difficulty tiers. Fixed-checkpoint rollout evaluation and parkour video capture have been added for the initial submission. Formal reward/observation ablations remain future work.
 
 ---
 
@@ -247,16 +247,37 @@ The current completed ablation is a terrain-difficulty ablation over the environ
 
 Reward/observation ablations have not been run yet. The placeholder `mdp_overrides.py` file should be treated as planned extension work rather than a completed ablation.
 
-### 5.5 Result files and figures
+### 5.5 Fixed-checkpoint rollout evaluation
+
+A separate rollout evaluator was implemented in `scripts/eval_parkour.py` and launched through `scripts/eval_parkour.sh`. Unlike the training-summary table, this evaluation loads fixed checkpoints and runs policy inference in the play environments. The success definition is conservative and directly tied to Isaac Lab termination signals: an episode is successful if it reaches timeout without `base_contact` termination.
+
+Evaluation command:
+
+```bash
+NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_parkour.sh all
+```
+
+| Metric | Easy | Medium | Hard |
+|--------|------|--------|------|
+| Episodes | 64 | 64 | 64 |
+| Success rate | 100.00% | 95.31% | 92.19% |
+| Fall rate | 0.00% | 4.69% | 7.81% |
+| Timeout rate | 100.00% | 95.31% | 92.19% |
+| Mean episode length | 2000.00 | 1945.97 | 1939.34 |
+| Mean XY tracking error | 3.2648 | 3.4487 | 5.2665 |
+| Mean yaw tracking error | 0.3719 | 0.3106 | 0.5213 |
+
+The rollout evaluation confirms the same difficulty ordering as the training logs. Easy completes all sampled episodes. Medium introduces some base-contact failures, and hard has the highest failure rate and largest tracking error. The tracking-error numbers are computed as direct pre-step velocity-command error during rollout, so their absolute scale should be interpreted as an evaluation statistic rather than as the same normalized TensorBoard command metric used during training.
+
+### 5.6 Result files and figures
 
 Quantitative result files:
 
 - `results/metrics/flat_baseline.csv`
 - `results/metrics/rough_baseline.csv`
 - `results/metrics/parkour_training_summary.csv`
+- `results/metrics/parkour_eval.csv`
 - `results/tables/ablation_summary.md`
-
-`results/metrics/parkour_eval.csv` is reserved for future fixed-checkpoint rollout evaluation and currently should not be used as the source of success-rate claims.
 
 Learning-curve figures:
 
@@ -265,16 +286,20 @@ Learning-curve figures:
 - Parkour: `results/figures/parkour_mean_reward.png`
 - Parkour episode length by tier: `results/figures/parkour_easy_episode_length.png`, `results/figures/parkour_medium_episode_length.png`, `results/figures/parkour_hard_episode_length.png`
 
-### 5.6 Videos
+### 5.7 Videos
 
-The currently available videos are reference-baseline videos stored under `report/assets/`.
+The rollout videos are stored under `report/assets/`.
 
 | Clip | File | Description |
 |------|------|-------------|
 | Flat baseline play | `report/assets/flat_play.mp4` | Stable velocity tracking on flat terrain with minimal falls |
 | Rough baseline play | `report/assets/rough_play.mp4` | Locomotion on procedural rough terrain with visibly higher difficulty |
+| Parkour easy play | `report/assets/parkour_easy_play.mp4` | Successful custom parkour rollout on the easiest terrain tier |
+| Parkour medium play | `report/assets/parkour_medium_play.mp4` | Custom parkour rollout with gap terrain and higher obstacles |
+| Parkour hard 3000 | `report/assets/parkour_hard3000_play.mp4` | Failure/undertrained hard-tier case before resumed training |
+| Parkour hard 4500 | `report/assets/parkour_hard4500_play.mp4` | Hard-tier rollout after resumed training to iteration 4498 |
 
-Parkour-specific rollout videos have not yet been captured into `report/assets/`. The highest-priority missing media are one successful easy or medium parkour rollout and one hard-tier failure or near-failure case for qualitative analysis.
+The hard 3000 checkpoint is used as the failure case because it has lower training reward and higher base-contact termination than the resumed hard checkpoint. This supports the qualitative interpretation that the hard terrain is a real stress test rather than only a cosmetic terrain change.
 
 ---
 
@@ -286,7 +311,7 @@ The custom parkour results show that the inherited rough G1 configuration is a v
 
 The hard result is the most informative failure boundary. Resuming hard training from 3000 to 4498 iterations improves stability relative to the initial hard checkpoint, but the final policy still has the worst reward and tracking error. This suggests that the terrain generator is difficult enough to stress the inherited rough reward. Further improvement likely requires either longer training, tuned command ranges, or parkour-specific reward/termination terms such as forward progress, foothold safety, or obstacle-passing success.
 
-The main limitation is evaluation. The current tables use training scalars, not a separate fixed-seed rollout evaluator. Therefore, this report can defensibly claim that the three parkour tiers were implemented and trained, and that their training metrics show increasing difficulty. It should not yet claim formal task success rate or obstacle pass rate until `scripts/eval_parkour.sh` is replaced with a real rollout evaluation driver.
+The main limitation is now the scope of the evaluation rather than the absence of evaluation. The fixed-checkpoint evaluator measures timeout success, base-contact failure, episode length, and velocity-command tracking error. It does not yet measure semantic obstacle completion, such as explicitly passing a named gap or stair sequence. Therefore, the reported success rate should be read as locomotion survival over parkour terrain, not as a full obstacle-by-obstacle parkour score.
 
 ---
 
@@ -299,4 +324,4 @@ This project built and trained a custom parkour locomotion setup for the Unitree
 - The custom parkour environment adds three terrain difficulty tiers and trains policies for easy, medium, and hard obstacle settings.
 - The parkour metrics show a clear difficulty gradient: fall rate and tracking error increase from easy to medium to hard, while reward decreases.
 
-The remaining work is to run fixed-checkpoint parkour rollout evaluation, capture parkour success and failure videos, and complete formal reward/observation ablations.
+The remaining work beyond this initial submission is to add semantic obstacle-passing metrics and complete formal reward/observation ablations.

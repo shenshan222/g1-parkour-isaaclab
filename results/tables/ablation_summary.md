@@ -1,14 +1,14 @@
 # Ablation summary
 
-Current table uses training-summary metrics from TensorBoard logs, not a separate fixed-seed rollout evaluator. Formal success-rate evaluation is still pending because `scripts/eval_parkour.sh` is a stub.
+Current table combines training-summary metrics with fixed-checkpoint rollout success metrics from `results/metrics/parkour_eval.csv`.
 
 | Comparison | Run | Mean reward | Fall rate | XY tracking error | Mean episode length | Notes |
 |------------|-----|-------------|-----------|-------------------|---------------------|-------|
 | Baseline terrain | Flat baseline | 28.77 | 0.44% | 0.2087 m/s | 1000.0 | Official flat G1 velocity task; easiest reference setting |
 | Baseline terrain | Rough baseline | 24.01 | 5.41% | 0.3407 m/s | 984.5 | Official rough G1 velocity task; parent configuration for parkour |
-| Parkour difficulty | Easy | 30.70 | 4.00% | 0.3050 m/s | 983.2 | Custom stairs/boxes/rough/slopes; no gap terrain |
-| Parkour difficulty | Medium | 20.98 | 6.75% | 0.3590 m/s | 988.1 | Adds gaps and increases obstacle height |
-| Parkour difficulty | Hard | 14.44 | 7.27% | 0.4689 m/s | 977.2 | Wider gaps, higher obstacles, narrower platforms; trained to 4498 |
+| Parkour difficulty | Easy | 30.70 | 4.00% train / 0.00% eval | 0.3050 train | 983.2 train / 2000.0 eval | 100.00% rollout success; no gap terrain |
+| Parkour difficulty | Medium | 20.98 | 6.75% train / 4.69% eval | 0.3590 train | 988.1 train / 1946.0 eval | 95.31% rollout success; adds gaps and higher obstacles |
+| Parkour difficulty | Hard | 14.44 | 7.27% train / 7.81% eval | 0.4689 train | 977.2 train / 1939.3 eval | 92.19% rollout success; widest gaps and hardest platforms |
 
 ## Interpretation
 
@@ -19,5 +19,5 @@ Current table uses training-summary metrics from TensorBoard logs, not a separat
 ## Pending formal ablations
 
 - Reward/observation ablations have not been run yet.
-- Fixed-checkpoint rollout evaluation has not been run yet.
-- `results/metrics/parkour_eval.csv` should remain the target output for formal success-rate evaluation.
+- Fixed-checkpoint rollout evaluation has been run for easy/medium/hard with 64 episodes each.
+- `results/metrics/parkour_eval.csv` contains the current formal evaluation table.
