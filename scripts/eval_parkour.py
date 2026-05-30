@@ -31,9 +31,14 @@ parser = argparse.ArgumentParser(description="Evaluate a trained G1 parkour RSL-
 parser.add_argument("--task", required=True, type=str, help="Isaac Lab Gym task id, usually a *-Play-v0 task.")
 parser.add_argument("--agent", type=str, default="rsl_rl_cfg_entry_point", help="RL agent config entry point.")
 parser.add_argument("--eval_name", required=True, type=str, help="Name to write into the CSV row.")
+parser.add_argument("--checkpoint_source", type=str, default="", help="Source label for cross-terrain eval checkpoints.")
+parser.add_argument("--eval_env", type=str, default="", help="Evaluation environment label for cross-terrain eval.")
 parser.add_argument("--output_csv", required=True, type=str, help="CSV file to create/update.")
 parser.add_argument("--num_episodes", type=int, default=100, help="Number of finished episodes to collect.")
 parser.add_argument("--num_envs", type=int, default=32, help="Number of parallel environments.")
+parser.add_argument("--terrain_num_rows", type=int, default=None, help="Override terrain generator row count for eval.")
+parser.add_argument("--terrain_num_cols", type=int, default=None, help="Override terrain generator column count for eval.")
+parser.add_argument("--terrain_sampling", type=str, default="", help="Terrain sampling label written to CSV metadata.")
 parser.add_argument(
     "--max_steps",
     type=int,
@@ -97,6 +102,12 @@ def _write_row(output_csv: Path, row: dict[str, object], append: bool) -> None:
         "pass_rate_level_0",
         "pass_rate_level_1",
         "pass_rate_level_2",
+        "checkpoint_source",
+        "eval_env",
+        "terrain_num_rows",
+        "terrain_num_cols",
+        "terrain_sampling",
+        "seed",
         "checkpoint",
         "task",
         "num_envs",
@@ -125,6 +136,13 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     env_cfg.scene.num_envs = args_cli.num_envs
     env_cfg.seed = args_cli.seed
     env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
+    terrain_generator = getattr(getattr(env_cfg.scene, "terrain", None), "terrain_generator", None)
+    if terrain_generator is not None:
+        if args_cli.terrain_num_rows is not None:
+            terrain_generator.num_rows = args_cli.terrain_num_rows
+        if args_cli.terrain_num_cols is not None:
+            terrain_generator.num_cols = args_cli.terrain_num_cols
+        terrain_generator.curriculum = False
 
     checkpoint = retrieve_file_path(args_cli.checkpoint)
     log_dir = os.path.dirname(checkpoint)
@@ -232,6 +250,12 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         "mean_episode_length": f"{mean_len:.2f}",
         "num_episodes": n,
         **_empty_level_rates(),
+        "checkpoint_source": args_cli.checkpoint_source,
+        "eval_env": args_cli.eval_env,
+        "terrain_num_rows": args_cli.terrain_num_rows if args_cli.terrain_num_rows is not None else "",
+        "terrain_num_cols": args_cli.terrain_num_cols if args_cli.terrain_num_cols is not None else "",
+        "terrain_sampling": args_cli.terrain_sampling,
+        "seed": args_cli.seed,
         "checkpoint": checkpoint,
         "task": args_cli.task,
         "num_envs": num_envs,
