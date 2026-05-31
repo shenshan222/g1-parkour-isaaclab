@@ -14,7 +14,7 @@ Document at least two reward / MDP variants for the course comparison table.
 
 ## Metrics to compare
 
-- Success rate
+- Timeout rate / semantic completion rate
 - Fall rate
 - Mean velocity tracking error
 

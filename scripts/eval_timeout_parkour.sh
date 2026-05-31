@@ -2,7 +2,7 @@
 # Run fixed-checkpoint evaluation rollouts and write CSV under results/metrics/.
 #
 # Usage:
-#   bash scripts/eval_parkour.sh [all|easy|medium|hard ...]
+#   bash scripts/eval_timeout_parkour.sh [all|easy|medium|hard ...]
 #
 # Environment overrides:
 #   NUM_EPISODES=100
@@ -18,14 +18,14 @@ source "${SCRIPT_DIR}/_env.sh"
 
 usage() {
   cat <<'EOF'
-Usage: bash scripts/eval_parkour.sh [LEVEL ...]
+Usage: bash scripts/eval_timeout_parkour.sh [LEVEL ...]
 
   LEVEL: all | easy | medium | hard  (default: all)
 
 Examples:
-  bash scripts/eval_parkour.sh
-  NUM_EPISODES=50 bash scripts/eval_parkour.sh easy hard
-  CHECKPOINT_HARD=/path/to/model.pt bash scripts/eval_parkour.sh hard
+  bash scripts/eval_timeout_parkour.sh
+  NUM_EPISODES=50 bash scripts/eval_timeout_parkour.sh easy hard
+  CHECKPOINT_HARD=/path/to/model.pt bash scripts/eval_timeout_parkour.sh hard
 EOF
 }
 
@@ -100,7 +100,7 @@ eval_one_level() {
     exit 1
   fi
 
-  out_csv="${HUMANOID_PARKOUR_ROOT}/results/metrics/parkour_eval.csv"
+  out_csv="${HUMANOID_PARKOUR_ROOT}/results/metrics/parkour_timeout_eval.csv"
   append_flag="--append"
 
   echo ""
@@ -111,7 +111,7 @@ eval_one_level() {
   echo "Checkpoint: ${ckpt}"
   echo "Output: ${out_csv}"
 
-  run_isaaclab_entrypoint "${SCRIPT_DIR}/eval_parkour.py" \
+  run_isaaclab_entrypoint "${SCRIPT_DIR}/eval_timeout_parkour.py" \
     --task="${task}" \
     --eval_name="parkour_${level}" \
     --checkpoint="${ckpt}" \
@@ -135,7 +135,7 @@ ensure_package_installed
 
 # Start from a fresh combined CSV for default/all evaluations.
 if [[ ${#LEVELS[@]} -gt 1 ]]; then
-  rm -f "${HUMANOID_PARKOUR_ROOT}/results/metrics/parkour_eval.csv"
+  rm -f "${HUMANOID_PARKOUR_ROOT}/results/metrics/parkour_timeout_eval.csv"
 fi
 
 for level in "${LEVELS[@]}"; do
@@ -144,4 +144,4 @@ done
 
 echo ""
 echo "Parkour evaluation finished: ${LEVELS[*]}"
-echo "CSV: ${HUMANOID_PARKOUR_ROOT}/results/metrics/parkour_eval.csv"
+echo "CSV: ${HUMANOID_PARKOUR_ROOT}/results/metrics/parkour_timeout_eval.csv"

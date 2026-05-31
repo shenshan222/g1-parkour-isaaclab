@@ -21,11 +21,11 @@ The official comparison uses a consistent checkpoint budget for the three parkou
 Official metrics are stored in:
 
 - `results/metrics/parkour_training_summary.csv`
-- `results/metrics/parkour_eval.csv`
-- `results/metrics/cross_terrain_eval.csv`
-- `results/metrics/cross_terrain_stress_eval.csv`
+- `results/metrics/parkour_timeout_eval.csv`
+- `results/metrics/timeout_cross_terrain_eval.csv`
+- `results/metrics/timeout_cross_terrain_stress_eval.csv`
 
-The main evaluation chain is: diagonal fixed-checkpoint rollout evaluation, 4x4 random cross-terrain evaluation, and 4x4 fixed-row stress evaluation.
+The current timeout-based evaluation chain is: diagonal fixed-checkpoint rollout evaluation, 4x4 random cross-terrain evaluation, and 4x4 fixed-row stress evaluation.
 
 ## Requirements
 
@@ -57,10 +57,10 @@ export HUMANOID_PARKOUR_ROOT=/path/to/g1-parkour-isaaclab
 | Train rough baseline | `bash scripts/train_rough_baseline.sh` |
 | Train parkour tasks | `bash scripts/train_parkour.sh [all|easy|medium|hard]` |
 | Play / record videos | `bash scripts/play_parkour.sh [all|easy|medium|hard]` |
-| Diagonal rollout evaluation | `NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_parkour.sh all` |
-| Random 4x4 cross-terrain evaluation | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain.sh all` |
-| Fixed-row 4x4 stress evaluation | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh all` |
-| Generate cross/stress tables | `python scripts/summarize_cross_terrain_eval.py --input_csv <csv> --output_dir results/tables` |
+| Diagonal rollout evaluation | `NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_timeout_parkour.sh all` |
+| Random 4x4 cross-terrain evaluation | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_timeout_cross_terrain.sh all` |
+| Fixed-row 4x4 stress evaluation | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_timeout_cross_terrain_stress.sh all` |
+| Generate cross/stress tables | `python scripts/summarize_timeout_cross_terrain_eval.py --input_csv <csv> --output_dir results/tables` |
 | TensorBoard | `bash scripts/launch_tensorboard.sh` |
 
 Training logs and checkpoints are written to the large-disk run root by default; see `humanoid_parkour/utils/paths.py`. They should **not** be committed to Git.

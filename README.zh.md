@@ -21,9 +21,9 @@ Isaac Lab 保持为**外部依赖**；本仓库只包含自定义任务包、流
 正式指标文件：
 
 - `results/metrics/parkour_training_summary.csv`
-- `results/metrics/parkour_eval.csv`
-- `results/metrics/cross_terrain_eval.csv`
-- `results/metrics/cross_terrain_stress_eval.csv`
+- `results/metrics/parkour_timeout_eval.csv`
+- `results/metrics/timeout_cross_terrain_eval.csv`
+- `results/metrics/timeout_cross_terrain_stress_eval.csv`
 
 主评估链条是：固定 checkpoint diagonal rollout、4x4 random cross-terrain evaluation、4x4 fixed-row stress evaluation。
 
@@ -57,10 +57,10 @@ export HUMANOID_PARKOUR_ROOT=/path/to/g1-parkour-isaaclab
 | Rough baseline 训练 | `bash scripts/train_rough_baseline.sh` |
 | Parkour 训练 | `bash scripts/train_parkour.sh [all|easy|medium|hard]` |
 | Play / 录视频 | `bash scripts/play_parkour.sh [all|easy|medium|hard]` |
-| Diagonal rollout 评估 | `NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_parkour.sh all` |
-| Random 4x4 交叉评估 | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain.sh all` |
-| Fixed-row 4x4 压力测试 | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh all` |
-| 生成 cross/stress 表格 | `python scripts/summarize_cross_terrain_eval.py --input_csv <csv> --output_dir results/tables` |
+| Diagonal rollout 评估 | `NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_timeout_parkour.sh all` |
+| Random 4x4 交叉评估 | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_timeout_cross_terrain.sh all` |
+| Fixed-row 4x4 压力测试 | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_timeout_cross_terrain_stress.sh all` |
+| 生成 cross/stress 表格 | `python scripts/summarize_timeout_cross_terrain_eval.py --input_csv <csv> --output_dir results/tables` |
 | TensorBoard | `bash scripts/launch_tensorboard.sh` |
 
 训练日志与 checkpoint 默认写到大盘路径；见 `humanoid_parkour/utils/paths.py`。这些文件**不**提交进 Git。

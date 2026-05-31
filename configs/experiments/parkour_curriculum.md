@@ -30,15 +30,15 @@ The hard tier uses the 3000-iteration checkpoint for direct comparison with easy
 ## Evaluation
 
 ```bash
-NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_parkour.sh all
+NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_timeout_parkour.sh all
 ```
 
-Current rollout success rates:
+Current rollout timeout rates:
 
-| Tier | Success rate | Fall rate |
+| Tier | Timeout rate | Fall rate |
 |------|--------------|-----------|
 | Easy | 100.00% | 0.00% |
 | Medium | 95.31% | 4.69% |
 | Hard | 87.50% | 12.50% |
 
-Detailed metrics are in `results/metrics/parkour_eval.csv`.
+Detailed metrics are in `results/metrics/parkour_timeout_eval.csv`.

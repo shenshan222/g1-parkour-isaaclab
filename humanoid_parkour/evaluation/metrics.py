@@ -11,60 +11,51 @@ from typing import Any
 
 @dataclass
 class EpisodeMetrics:
-    """Per-episode statistics."""
+    """Per-episode timeout-evaluation statistics."""
 
-    success: bool
+    timeout: bool
     fell: bool
     velocity_tracking_error: float
-    terrain_level: int
     episode_length: int
 
 
 def compute_episode_metrics(
     *,
-    success: bool,
+    timeout: bool,
     fell: bool,
     velocity_tracking_error: float,
-    terrain_level: int,
     episode_length: int,
 ) -> EpisodeMetrics:
     """Build metrics for one finished episode."""
     return EpisodeMetrics(
-        success=success,
+        timeout=timeout,
         fell=fell,
         velocity_tracking_error=velocity_tracking_error,
-        terrain_level=terrain_level,
         episode_length=episode_length,
     )
 
 
 def aggregate_run_metrics(episodes: list[EpisodeMetrics]) -> dict[str, Any]:
-    """Aggregate a list of episodes into report-ready scalars."""
+    """Aggregate a list of episodes into report-ready timeout-eval scalars."""
     if not episodes:
         return {
-            "success_rate": 0.0,
+            "timeout_rate": 0.0,
             "fall_rate": 0.0,
             "mean_velocity_tracking_error": 0.0,
             "mean_episode_length": 0.0,
-            "pass_rate_by_level": {},
+            "num_episodes": 0,
         }
     n = len(episodes)
-    success_rate = sum(e.success for e in episodes) / n
+    timeout_rate = sum(e.timeout for e in episodes) / n
     fall_rate = sum(e.fell for e in episodes) / n
     mean_vte = sum(e.velocity_tracking_error for e in episodes) / n
     mean_len = sum(e.episode_length for e in episodes) / n
 
-    by_level: dict[int, list[bool]] = {}
-    for e in episodes:
-        by_level.setdefault(e.terrain_level, []).append(e.success)
-    pass_rate_by_level = {lvl: sum(s) / len(s) for lvl, s in by_level.items()}
-
     return {
-        "success_rate": success_rate,
+        "timeout_rate": timeout_rate,
         "fall_rate": fall_rate,
         "mean_velocity_tracking_error": mean_vte,
         "mean_episode_length": mean_len,
-        "pass_rate_by_level": pass_rate_by_level,
         "num_episodes": n,
     }
 

@@ -14,54 +14,50 @@ Selected submission videos are stored in `report/assets/` and are force-added to
 ## Diagonal fixed-checkpoint rollout metrics
 
 ```bash
-NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_parkour.sh all
+NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_timeout_parkour.sh all
 ```
 
-Output: `results/metrics/parkour_eval.csv`.
+Output: `results/metrics/parkour_timeout_eval.csv`.
 
-The evaluator loads fixed checkpoints, runs policy inference in the corresponding play environments, and defines success as timeout without `base_contact` termination. It reports success rate, fall rate, timeout rate, episode length, direct velocity-tracking error, and terrain-level pass rates.
+The evaluator loads fixed checkpoints, runs policy inference in the corresponding play environments, and defines success as timeout without `base_contact` termination. It reports timeout rate, fall rate, episode length, and direct velocity-tracking error.
 
 ## Random 4x4 cross-terrain evaluation
 
 ```bash
-NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain.sh all
-python scripts/summarize_cross_terrain_eval.py \
-  --input_csv results/metrics/cross_terrain_eval.csv \
+NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_timeout_cross_terrain.sh all
+python scripts/summarize_timeout_cross_terrain_eval.py \
+  --input_csv results/metrics/timeout_cross_terrain_eval.csv \
   --output_dir results/tables \
-  --output_prefix cross_terrain
+  --output_prefix timeout_cross_terrain
 ```
 
 Output files:
 
-- `results/metrics/cross_terrain_eval.csv`
-- `results/tables/cross_terrain_success_rate.md`
-- `results/tables/cross_terrain_fall_rate.md`
-- `results/tables/cross_terrain_tracking_error.md`
+- `results/metrics/timeout_cross_terrain_eval.csv`
+- `results/tables/timeout_cross_terrain_summary.md`
 
 This evaluation runs rough/easy/medium/hard checkpoints against rough/easy/medium/hard play environments. It uses a 10x10 terrain grid, fixed seed, disabled curriculum, and random terrain type/difficulty sampling within each eval task.
 
 ## Fixed-row 4x4 stress evaluation
 
 ```bash
-NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh all
-python scripts/summarize_cross_terrain_eval.py \
-  --input_csv results/metrics/cross_terrain_stress_eval.csv \
+NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_timeout_cross_terrain_stress.sh all
+python scripts/summarize_timeout_cross_terrain_eval.py \
+  --input_csv results/metrics/timeout_cross_terrain_stress_eval.csv \
   --output_dir results/tables \
-  --output_prefix cross_terrain_stress
+  --output_prefix timeout_cross_terrain_stress
 ```
 
 Output files:
 
-- `results/metrics/cross_terrain_stress_eval.csv`
-- `results/tables/cross_terrain_stress_success_rate.md`
-- `results/tables/cross_terrain_stress_fall_rate.md`
-- `results/tables/cross_terrain_stress_tracking_error.md`
+- `results/metrics/timeout_cross_terrain_stress_eval.csv`
+- `results/tables/timeout_cross_terrain_stress_summary.md`
 
 The default stress setting fixes `terrain_fixed_row=9` and leaves terrain columns unfixed, so the rollout covers all terrain types at the highest difficulty index within each preset. Row 9 is relative to each preset and should not be interpreted as the same absolute physical difficulty across rough/easy/medium/hard.
 
 ## Result interpretation
 
-The current success definition is `timeout_without_base_contact`. It measures locomotion survival over the sampled terrain distribution, not semantic obstacle-by-obstacle completion.
+The current timeout definition is `timeout_without_base_contact`. It measures locomotion survival over the sampled terrain distribution, not semantic obstacle-by-obstacle completion.
 
 Random cross-terrain evaluation measures average generalization across terrain samples. Fixed-row stress evaluation measures high-row robustness inside each terrain preset.
 

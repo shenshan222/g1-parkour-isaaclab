@@ -13,5 +13,5 @@ This is the completed ablation-style comparison used in the report. It varies te
 Primary outputs:
 
 - Training summaries: `results/metrics/flat_baseline.csv`, `results/metrics/rough_baseline.csv`, `results/metrics/parkour_training_summary.csv`
-- Rollout evaluation: `results/metrics/parkour_eval.csv`
+- Rollout evaluation: `results/metrics/parkour_timeout_eval.csv`
 - Report table: `results/tables/ablation_summary.md`

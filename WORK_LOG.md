@@ -71,12 +71,12 @@
 
 ## 2026-05-26：实现固定 checkpoint evaluation 结构
 
-- 增加 `scripts/eval_parkour.py` 和 `scripts/eval_parkour.sh`。
+- 增加 `scripts/eval_timeout_parkour.py` 和 `scripts/eval_timeout_parkour.sh`。
 - evaluation 逻辑：
   - 加载固定 checkpoint；
   - 在对应 `*-Play-v0` 环境中 rollout；
   - 收集固定数量 episode；
-  - 统计 success rate、fall rate、timeout rate、episode length、velocity tracking error。
+  - 统计 timeout rate、fall rate、episode length、velocity tracking error。
 - 成功定义采用：
   - timeout 且没有 base contact；
   - 即 `timeout_without_base_contact`。
@@ -113,9 +113,9 @@
 - 添加 parkour training summary：
   - `results/metrics/parkour_training_summary.csv`
 - 添加 fixed-checkpoint rollout evaluation：
-  - `results/metrics/parkour_eval.csv`
+  - `results/metrics/parkour_timeout_eval.csv`
 - 使用命令：
-  - `NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_parkour.sh all`
+  - `NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_timeout_parkour.sh all`
 - evaluation 结果：
   - Easy success：`100.00%`
   - Medium success：`95.31%`
@@ -192,9 +192,9 @@
 
 - 根据 `Cross_evaluation.md` 完成 4x4 cross-terrain evaluation 工具链。
 - 已实现内容：
-  - 扩展 `scripts/eval_parkour.py`，加入 `checkpoint_source`、`eval_env`、terrain grid override、terrain sampling 和 seed 等 CSV 元数据；
-  - 新增 `scripts/eval_cross_terrain.sh`，统一运行 rough / easy / medium / hard checkpoint 到 rough / easy / medium / hard eval env 的 4x4 矩阵；
-  - 新增 `scripts/summarize_cross_terrain_eval.py`，从 CSV 生成 4x4 Markdown 表格。
+  - 扩展 `scripts/eval_timeout_parkour.py`，加入 `checkpoint_source`、`eval_env`、terrain grid override、terrain sampling 和 seed 等 CSV 元数据；
+  - 新增 `scripts/eval_timeout_cross_terrain.sh`，统一运行 rough / easy / medium / hard checkpoint 到 rough / easy / medium / hard eval env 的 4x4 矩阵；
+  - 新增 `scripts/summarize_timeout_cross_terrain_eval.py`，从 CSV 生成 4x4 Markdown 表格。
 - 正式 evaluation 设置：
   - `NUM_EPISODES=64`；
   - `NUM_ENVS=32`；
@@ -203,11 +203,9 @@
   - terrain sampling：`random_uniform_difficulty`；
   - curriculum disabled。
 - 输出文件：
-  - `results/metrics/cross_terrain_eval.csv`；
-  - `results/tables/cross_terrain_success_rate.md`；
-  - `results/tables/cross_terrain_fall_rate.md`；
-  - `results/tables/cross_terrain_tracking_error.md`。
-- Success rate 结果：
+  - `results/metrics/timeout_cross_terrain_eval.csv`；
+  - `results/tables/timeout_cross_terrain_summary.md`；
+- Timeout rate 结果：
 
 | Checkpoint source | Eval rough | Eval easy | Eval medium | Eval hard |
 |---|---:|---:|---:|---:|
@@ -233,7 +231,7 @@
 - 第一版计划：
   - 默认固定 `terrain_fixed_row=9`，即每个 terrain preset 内最高 difficulty index；
   - 不固定 terrain column，让并行 env 继续覆盖不同 terrain type；
-  - 输出独立文件 `results/metrics/cross_terrain_stress_eval.csv`，避免覆盖 random cross-eval 主结果。
+  - 输出独立文件 `results/metrics/timeout_cross_terrain_stress_eval.csv`，避免覆盖 random cross-eval 主结果。
 - 设计定位：
   - random 10x10 cross-eval 用于平均泛化能力分析；
   - fixed-row stress eval 用于边界条件和高难 terrain robustness 分析；
@@ -258,7 +256,7 @@
 
 ## 当前局限
 
-- 现有 `parkour_eval.csv` 是 diagonal self-evaluation：
+- 现有 `parkour_timeout_eval.csv` 是 diagonal self-evaluation：
   - easy checkpoint eval easy；
   - medium checkpoint eval medium；
   - hard checkpoint eval hard。
@@ -270,10 +268,10 @@
 ## 下一步计划
 
 1. 实现 fixed-row stress evaluation：
-   - 扩展 `scripts/eval_parkour.py`，支持固定 terrain row / optional fixed column；
-   - 新增 `scripts/eval_cross_terrain_stress.sh`；
+   - 扩展 `scripts/eval_timeout_parkour.py`，支持固定 terrain row / optional fixed column；
+   - 新增 `scripts/eval_timeout_cross_terrain_stress.sh`；
    - 默认使用 `terrain_fixed_row=9`、`NUM_EPISODES=64`、`NUM_ENVS=32`、`SEED=42`；
-   - 输出 `results/metrics/cross_terrain_stress_eval.csv` 和对应 4x4 Markdown 表格。
+   - 输出 `results/metrics/timeout_cross_terrain_stress_eval.csv` 和对应 4x4 Markdown 表格。
 2. 报告中更新 cross-eval 解释：
    - diagonal 表示 specialist self-performance；
    - off-diagonal 表示泛化能力；

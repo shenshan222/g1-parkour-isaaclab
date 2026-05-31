@@ -247,20 +247,19 @@ Reward/observation ablations have not been run yet, so the completed ablation-st
 
 ### 5.5 Fixed-checkpoint rollout evaluation
 
-A separate rollout evaluator was implemented in `scripts/eval_parkour.py` and launched through `scripts/eval_parkour.sh`. Unlike the training-summary table, this evaluation loads fixed checkpoints and runs policy inference in the play environments. The success definition is conservative and directly tied to Isaac Lab termination signals: an episode is successful if it reaches timeout without `base_contact` termination.
+A separate rollout evaluator was implemented in `scripts/eval_timeout_parkour.py` and launched through `scripts/eval_timeout_parkour.sh`. Unlike the training-summary table, this evaluation loads fixed checkpoints and runs policy inference in the play environments. The timeout definition is conservative and directly tied to Isaac Lab termination signals: an episode is successful if it reaches timeout without `base_contact` termination.
 
 Evaluation command:
 
 ```bash
-NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_parkour.sh all
+NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_timeout_parkour.sh all
 ```
 
 | Metric | Easy | Medium | Hard |
 |--------|------|--------|------|
 | Episodes | 64 | 64 | 64 |
-| Success rate | 100.00% | 95.31% | 87.50% |
-| Fall rate | 0.00% | 4.69% | 12.50% |
 | Timeout rate | 100.00% | 95.31% | 87.50% |
+| Fall rate | 0.00% | 4.69% | 12.50% |
 | Mean episode length | 2000.00 | 1945.97 | 1809.97 |
 | Mean XY tracking error | 3.2648 | 3.4487 | 3.5624 |
 | Mean yaw tracking error | 0.3719 | 0.3106 | 0.4984 |
@@ -274,7 +273,7 @@ Quantitative result files:
 - `results/metrics/flat_baseline.csv`
 - `results/metrics/rough_baseline.csv`
 - `results/metrics/parkour_training_summary.csv`
-- `results/metrics/parkour_eval.csv`
+- `results/metrics/parkour_timeout_eval.csv`
 - `results/tables/ablation_summary.md`
 
 Learning-curve figures:
@@ -294,7 +293,7 @@ The rollout videos are stored under `report/assets/`.
 | Rough baseline play | `report/assets/rough_play.mp4` | Locomotion on procedural rough terrain with visibly higher difficulty |
 | Parkour easy play | `report/assets/parkour_easy_play.mp4` | Successful custom parkour rollout on the easiest terrain tier |
 | Parkour medium play | `report/assets/parkour_medium_play.mp4` | Custom parkour rollout with gap terrain and higher obstacles |
-| Parkour hard | `report/assets/parkour_hard3000_play.mp4` | Official 3000-iteration hard-tier rollout |
+| Parkour hard | `report/assets/parkour_hard_play.mp4` | Official 3000-iteration hard-tier rollout |
 
 The hard checkpoint is kept at 3000 iterations so the qualitative video uses the same training budget as easy and medium. This supports the interpretation that the hard terrain is a real stress test under a fair comparison protocol rather than only a longer-training comparison.
 
@@ -308,7 +307,7 @@ The custom parkour results show that the inherited rough G1 configuration is a v
 
 The hard result is the most informative failure boundary. Under the same 3000-iteration budget, hard has the lowest reward, highest fall rate, and weakest tracking quality among the parkour tiers. This suggests that the inherited velocity-tracking objective is insufficient for the hardest terrain distribution. Further improvement likely requires tuned command ranges, staged hard-terrain curriculum, or parkour-specific reward/termination terms such as forward progress, foothold safety, or obstacle-passing success.
 
-The main limitation is now the scope of the evaluation rather than the absence of evaluation. The fixed-checkpoint evaluator measures timeout success, base-contact failure, episode length, and velocity-command tracking error. It does not yet measure semantic obstacle completion, such as explicitly passing a named gap or stair sequence. Therefore, the reported success rate should be read as locomotion survival over parkour terrain, not as a full obstacle-by-obstacle parkour score.
+The main limitation is now the scope of the evaluation rather than the absence of evaluation. The fixed-checkpoint evaluator measures timeout, base-contact failure, episode length, and velocity-command tracking error. It does not yet measure semantic obstacle completion, such as explicitly passing a named gap or stair sequence. Therefore, the reported timeout rate should be read as locomotion survival over parkour terrain, not as a full obstacle-by-obstacle parkour score.
 
 ---
 

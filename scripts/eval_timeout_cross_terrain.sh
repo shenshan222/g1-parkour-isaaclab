@@ -2,14 +2,14 @@
 # Run 4x4 cross-terrain fixed-checkpoint evaluation rollouts.
 #
 # Usage:
-#   bash scripts/eval_cross_terrain.sh [all|SOURCE [EVAL_ENV]]
+#   bash scripts/eval_timeout_cross_terrain.sh [all|SOURCE [EVAL_ENV]]
 #
 # SOURCE/EVAL_ENV: rough | easy | medium | hard
 #
 # Examples:
-#   bash scripts/eval_cross_terrain.sh all
-#   bash scripts/eval_cross_terrain.sh rough
-#   NUM_EPISODES=4 NUM_ENVS=4 bash scripts/eval_cross_terrain.sh hard easy
+#   bash scripts/eval_timeout_cross_terrain.sh all
+#   bash scripts/eval_timeout_cross_terrain.sh rough
+#   NUM_EPISODES=4 NUM_ENVS=4 bash scripts/eval_timeout_cross_terrain.sh hard easy
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -17,21 +17,21 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "${SCRIPT_DIR}/_env.sh"
 
 ORDER=(rough easy medium hard)
-OUT_CSV="${CROSS_EVAL_CSV:-${HUMANOID_PARKOUR_ROOT}/results/metrics/cross_terrain_eval.csv}"
+OUT_CSV="${CROSS_EVAL_CSV:-${HUMANOID_PARKOUR_ROOT}/results/metrics/timeout_cross_terrain_eval.csv}"
 TERRAIN_NUM_ROWS="${TERRAIN_NUM_ROWS:-10}"
 TERRAIN_NUM_COLS="${TERRAIN_NUM_COLS:-10}"
 TERRAIN_SAMPLING="${TERRAIN_SAMPLING:-random_uniform_difficulty}"
 
 usage() {
   cat <<'EOF'
-Usage: bash scripts/eval_cross_terrain.sh [all|SOURCE [EVAL_ENV]]
+Usage: bash scripts/eval_timeout_cross_terrain.sh [all|SOURCE [EVAL_ENV]]
 
   SOURCE/EVAL_ENV: rough | easy | medium | hard
 
 Examples:
-  bash scripts/eval_cross_terrain.sh all
-  bash scripts/eval_cross_terrain.sh rough
-  NUM_EPISODES=4 NUM_ENVS=4 bash scripts/eval_cross_terrain.sh hard easy
+  bash scripts/eval_timeout_cross_terrain.sh all
+  bash scripts/eval_timeout_cross_terrain.sh rough
+  NUM_EPISODES=4 NUM_ENVS=4 bash scripts/eval_timeout_cross_terrain.sh hard easy
 
 Environment overrides:
   NUM_EPISODES=64
@@ -40,7 +40,7 @@ Environment overrides:
   TERRAIN_NUM_ROWS=10
   TERRAIN_NUM_COLS=10
   TERRAIN_SAMPLING=random_uniform_difficulty
-  CROSS_EVAL_CSV=/path/to/cross_terrain_eval.csv
+  CROSS_EVAL_CSV=/path/to/timeout_cross_terrain_eval.csv
   CHECKPOINT_ROUGH=/path/to/model.pt
   CHECKPOINT_EASY=/path/to/model.pt
   CHECKPOINT_MEDIUM=/path/to/model.pt
@@ -163,7 +163,7 @@ eval_one_pair() {
   echo "Terrain grid: ${TERRAIN_NUM_ROWS}x${TERRAIN_NUM_COLS}"
   echo "Output: ${OUT_CSV}"
 
-  run_isaaclab_entrypoint "${SCRIPT_DIR}/eval_parkour.py" \
+  run_isaaclab_entrypoint "${SCRIPT_DIR}/eval_timeout_parkour.py" \
     --task="${task}" \
     --eval_name="${run_name}" \
     --checkpoint_source="${source}" \

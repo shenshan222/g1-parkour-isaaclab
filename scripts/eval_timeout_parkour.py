@@ -6,7 +6,7 @@
 
 This script is intentionally separate from TensorBoard training summaries. It
 runs policy inference, records episode outcomes, and writes report-ready CSV
-rows for ``results/metrics/parkour_eval.csv``.
+rows for ``results/metrics/parkour_timeout_eval.csv``.
 """
 
 from __future__ import annotations
@@ -87,9 +87,6 @@ def _to_float(value: torch.Tensor | float | int) -> float:
     return float(value)
 
 
-def _empty_level_rates() -> dict[str, str]:
-    return {"pass_rate_level_0": "", "pass_rate_level_1": "", "pass_rate_level_2": ""}
-
 
 def _apply_fixed_terrain_selection(raw_env, fixed_row: int | None, fixed_col: int | None) -> bool:
     if fixed_row is None and fixed_col is None:
@@ -121,16 +118,12 @@ def _write_row(output_csv: Path, row: dict[str, object], append: bool) -> None:
     output_csv.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
         "run_name",
-        "success_rate",
-        "fall_rate",
         "timeout_rate",
+        "fall_rate",
         "mean_velocity_tracking_error",
         "mean_yaw_tracking_error",
         "mean_episode_length",
         "num_episodes",
-        "pass_rate_level_0",
-        "pass_rate_level_1",
-        "pass_rate_level_2",
         "checkpoint_source",
         "eval_env",
         "terrain_num_rows",
@@ -143,7 +136,7 @@ def _write_row(output_csv: Path, row: dict[str, object], append: bool) -> None:
         "checkpoint",
         "task",
         "num_envs",
-        "success_definition",
+        "timeout_definition",
     ]
 
     rows: list[dict[str, object]] = []
@@ -202,8 +195,6 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     episode_lengths = torch.zeros(num_envs, dtype=torch.long, device=device)
     episode_xy_error = torch.zeros(num_envs, dtype=torch.float32, device=device)
     episode_yaw_error = torch.zeros(num_envs, dtype=torch.float32, device=device)
-    episode_levels = torch.zeros(num_envs, dtype=torch.long, device=device)
-
     completed: list[dict[str, object]] = []
     if _apply_fixed_terrain_selection(env.unwrapped, args_cli.terrain_fixed_row, args_cli.terrain_fixed_col):
         obs, _ = env.reset()
@@ -220,9 +211,6 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         robot = raw_env.scene["robot"]
         xy_error = torch.linalg.norm(command[:, :2] - robot.data.root_lin_vel_b[:, :2], dim=-1)
         yaw_error = torch.abs(command[:, 2] - robot.data.root_ang_vel_b[:, 2])
-        if hasattr(raw_env.scene.terrain, "terrain_levels"):
-            episode_levels = raw_env.scene.terrain.terrain_levels.clone().to(dtype=torch.long)
-
         episode_lengths += 1
         episode_xy_error += xy_error
         episode_yaw_error += yaw_error
@@ -242,17 +230,13 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
                 length = max(1, int(episode_lengths[env_id].item()))
                 fell = bool(terminated[local_index])
                 timeout = bool(timed_out[local_index])
-                success = timeout and not fell
-                level = int(episode_levels[env_id].item()) if episode_levels.numel() > env_id else -1
                 completed.append(
                     {
-                        "success": success,
                         "fell": fell,
                         "timeout": timeout,
                         "xy_error": float((episode_xy_error[env_id] / length).item()),
                         "yaw_error": float((episode_yaw_error[env_id] / length).item()),
                         "length": length,
-                        "terrain_level": level,
                     }
                 )
                 episode_lengths[env_id] = 0
@@ -268,23 +252,20 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
     episodes = completed[: args_cli.num_episodes]
     n = len(episodes)
-    success_rate = sum(ep["success"] for ep in episodes) / n
-    fall_rate = sum(ep["fell"] for ep in episodes) / n
     timeout_rate = sum(ep["timeout"] for ep in episodes) / n
+    fall_rate = sum(ep["fell"] for ep in episodes) / n
     mean_xy_error = sum(float(ep["xy_error"]) for ep in episodes) / n
     mean_yaw_error = sum(float(ep["yaw_error"]) for ep in episodes) / n
     mean_len = sum(int(ep["length"]) for ep in episodes) / n
 
     row: dict[str, object] = {
         "run_name": args_cli.eval_name,
-        "success_rate": f"{success_rate:.4f}",
-        "fall_rate": f"{fall_rate:.4f}",
         "timeout_rate": f"{timeout_rate:.4f}",
+        "fall_rate": f"{fall_rate:.4f}",
         "mean_velocity_tracking_error": f"{mean_xy_error:.4f}",
         "mean_yaw_tracking_error": f"{mean_yaw_error:.4f}",
         "mean_episode_length": f"{mean_len:.2f}",
         "num_episodes": n,
-        **_empty_level_rates(),
         "checkpoint_source": args_cli.checkpoint_source,
         "eval_env": args_cli.eval_env,
         "terrain_num_rows": args_cli.terrain_num_rows if args_cli.terrain_num_rows is not None else "",
@@ -297,16 +278,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         "checkpoint": checkpoint,
         "task": args_cli.task,
         "num_envs": num_envs,
-        "success_definition": "timeout_without_base_contact; tracking_error_direct_pre_step_mean",
+        "timeout_definition": "timeout_without_base_contact; tracking_error_direct_pre_step_mean",
     }
-
-    by_level: dict[int, list[bool]] = {}
-    for ep in episodes:
-        level = int(ep["terrain_level"])
-        if level in (0, 1, 2):
-            by_level.setdefault(level, []).append(bool(ep["success"]))
-    for level, successes in by_level.items():
-        row[f"pass_rate_level_{level}"] = f"{sum(successes) / len(successes):.4f}"
 
     output_csv = Path(args_cli.output_csv).resolve()
     _write_row(output_csv, row, append=args_cli.append)
@@ -314,7 +287,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     print("[INFO] Evaluation complete")
     print(f"[INFO] Run: {args_cli.eval_name}")
     print(f"[INFO] Episodes: {n}")
-    print(f"[INFO] Success rate: {success_rate:.4f}")
+    print(f"[INFO] Timeout rate: {timeout_rate:.4f}")
     print(f"[INFO] Fall rate: {fall_rate:.4f}")
     print(f"[INFO] Mean XY tracking error: {mean_xy_error:.4f}")
     print(f"[INFO] Wrote: {output_csv}")
