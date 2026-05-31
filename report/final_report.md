@@ -162,6 +162,7 @@ The rough baseline was intentionally harder and provides the more relevant paren
 - Base-contact termination: `5.41%`
 - Velocity tracking error in XY: `0.3407 m/s`
 - Velocity tracking error in yaw: `0.7501 rad/s`
+- Final curriculum terrain level scalar: `5.7961`
 
 Interpretation:
 
@@ -187,6 +188,7 @@ The comparison confirms that rough terrain is a meaningful difficulty increase r
 | Timeout rate | 99.56% | 94.62% |
 | XY velocity tracking reward | 0.9425 | 0.8441 |
 | XY velocity tracking error | 0.2087 m/s | 0.3407 m/s |
+| Curriculum terrain level scalar | N/A | 5.7961 |
 
 The rough task is therefore the appropriate starting point for parkour. It preserves the same locomotion objective while adding uneven terrain, terrain sensing, and curriculum-based difficulty progression.
 
@@ -231,8 +233,9 @@ The results show a clear difficulty gradient under the same 3000-iteration train
 | Mean episode length | 1000.0 | 984.5 | 983.2 | 988.1 | 941.7 |
 | Fall rate | 0.44% | 5.41% | 4.00% | 6.75% | 10.92% |
 | XY tracking error | 0.2087 m/s | 0.3407 m/s | 0.3050 m/s | 0.3590 m/s | 0.4407 m/s |
+| Curriculum terrain level scalar | N/A | 5.7961 | 5.7907 | 5.8001 | 5.6389 |
 
-This comparison supports two observations. First, rough terrain is a useful parent configuration: parkour easy starts from the same rough-terrain sensing and curriculum structure and remains stable. Second, the custom hard terrain is meaningfully harder than the official rough baseline, especially in tracking error and reward.
+This comparison supports two observations. First, rough terrain is a useful parent configuration: parkour easy starts from the same rough-terrain sensing and curriculum structure and remains stable. Rough, easy, and medium all finish close to curriculum level 5.8, while hard reaches 5.6389 under the same 3000-iteration budget. These curriculum scalars are useful within each terrain preset but should not be interpreted as identical absolute physical difficulty across presets. Second, the custom hard terrain is meaningfully harder than the official rough baseline, especially in tracking error and reward.
 
 ### 5.4 Difficulty ablation
 

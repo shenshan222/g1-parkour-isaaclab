@@ -15,3 +15,5 @@ Primary outputs:
 - Training summaries: `results/metrics/flat_baseline.csv`, `results/metrics/rough_baseline.csv`, `results/metrics/parkour_training_summary.csv`
 - Rollout evaluation: `results/metrics/parkour_timeout_eval.csv`
 - Report table: `results/tables/ablation_summary.md`
+
+The comparison table also reports final curriculum terrain level where applicable; flat terrain has no terrain curriculum.

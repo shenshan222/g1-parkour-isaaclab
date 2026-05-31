@@ -67,6 +67,7 @@ Artifacts are on the data disk only (not committed to Git).
 | track_ang_vel_z_exp              | 1.1755           |
 | error_vel_xy                     | 0.3407 m/s       |
 | error_vel_yaw                    | 0.7501 rad/s     |
+| curriculum_terrain_levels        | 5.7961           |
 | value_loss                       | 0.0141           |
 
 
@@ -84,6 +85,7 @@ Summary CSV row: `results/metrics/rough_baseline.csv`
 | timeout rate             | 99.56%                       | 94.62%           |
 | track_lin_vel_xy_exp     | 0.9425                       | 0.8441           |
 | error_vel_xy             | 0.21 m/s                     | 0.34 m/s         |
+| curriculum terrain level | N/A                          | 5.7961           |
 
 
 Rough is harder as expected: lower return, more falls, slightly worse xy velocity tracking; episode length still near cap.

@@ -1,2 +1,2 @@
-run_id,task,iterations,mean_reward,mean_episode_length,timeout_rate,fall_rate,track_lin_vel_xy_exp,track_ang_vel_z_exp,error_vel_xy,error_vel_yaw,checkpoint,wall_time_min,notes
-2026-05-21_21-31-41,Isaac-Velocity-Rough-G1-v0,3000,24.01,984.5,0.9462,0.0541,0.8441,1.1755,0.3407,0.7501,model_2999.pt,101,converged; harder than flat; OK for parkour base
+run_id,task,iterations,mean_reward,mean_episode_length,timeout_rate,fall_rate,track_lin_vel_xy_exp,track_ang_vel_z_exp,error_vel_xy,error_vel_yaw,curriculum_terrain_levels,checkpoint,wall_time_min,notes
+2026-05-21_21-31-41,Isaac-Velocity-Rough-G1-v0,3000,24.01,984.5,0.9462,0.0541,0.8441,1.1755,0.3407,0.7501,5.7961,model_2999.pt,101,converged; harder than flat; OK for parkour base
