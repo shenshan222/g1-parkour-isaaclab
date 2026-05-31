@@ -202,9 +202,9 @@ The completed experiments now include the two reference baselines and three cust
 |------------|------|------------|------------------|
 | Parkour easy | `Isaac-Velocity-Parkour-G1-Easy-v0` | 3000 | `model_2999.pt` |
 | Parkour medium | `Isaac-Velocity-Parkour-G1-Medium-v0` | 3000 | `model_2999.pt` |
-| Parkour hard | `Isaac-Velocity-Parkour-G1-Hard-v0` | 4499 | `model_4498.pt` |
+| Parkour hard | `Isaac-Velocity-Parkour-G1-Hard-v0` | 3000 | `model_2999.pt` |
 
-Hard was first trained to iteration 2999 and then resumed to iteration 4498. The initial hard curve had already started to plateau near iteration 3000, and the resumed segment begins with a visible reward drop before recovering and improving moderately.
+All three parkour tiers are compared at the 3000-iteration checkpoint. The hard tier uses the initial hard run checkpoint so that the training budget is consistent with easy and medium.
 
 ### 5.2 Parkour quantitative summary
 
@@ -212,25 +212,25 @@ The following numbers are final TensorBoard training scalars, not fixed-seed rol
 
 | Metric | Easy | Medium | Hard |
 |--------|------|--------|------|
-| Mean reward | 30.70 | 20.98 | 14.44 |
-| Mean episode length | 983.2 | 988.1 | 977.2 |
-| Timeout rate | 96.00% | 93.25% | 92.73% |
-| Base-contact/fall rate | 4.00% | 6.75% | 7.27% |
-| XY velocity tracking reward | 0.8741 | 0.8539 | 0.7836 |
-| XY velocity tracking error | 0.3050 m/s | 0.3590 m/s | 0.4689 m/s |
-| Yaw tracking error | 0.6067 rad/s | 0.8445 rad/s | 0.9720 rad/s |
-| Curriculum terrain level scalar | 5.7907 | 5.8001 | 5.6135 |
+| Mean reward | 30.70 | 20.98 | 11.34 |
+| Mean episode length | 983.2 | 988.1 | 941.7 |
+| Timeout rate | 96.00% | 93.25% | 89.08% |
+| Base-contact/fall rate | 4.00% | 6.75% | 10.92% |
+| XY velocity tracking reward | 0.8741 | 0.8539 | 0.7101 |
+| XY velocity tracking error | 0.3050 m/s | 0.3590 m/s | 0.4407 m/s |
+| Yaw tracking error | 0.6067 rad/s | 0.8445 rad/s | 1.0088 rad/s |
+| Curriculum terrain level scalar | 5.7907 | 5.8001 | 5.6389 |
 
-The results show a clear difficulty gradient. Easy parkour is trainable and even achieves a higher final mean reward than the rough baseline, while maintaining a lower fall rate than rough. Medium introduces gaps and higher obstacles; reward drops and tracking error increases. Hard is the strongest stress test. Its initial run reaches a plateau around iteration 2500-3000, and the resumed run only recovers from the restart drop and improves moderately. The final hard policy keeps most episodes alive until timeout, but its reward and velocity-tracking quality remain substantially worse than easy and medium.
+The results show a clear difficulty gradient under the same 3000-iteration training budget. Easy parkour is trainable and even achieves a higher final mean reward than the rough baseline, while maintaining a lower fall rate than rough. Medium introduces gaps and higher obstacles; reward drops and tracking error increases. Hard is the strongest stress test: it has the lowest reward, the highest fall rate, and the weakest velocity-tracking quality among the three parkour tiers.
 
 ### 5.3 Baseline-to-parkour comparison
 
 | Metric | Flat | Rough | Parkour easy | Parkour medium | Parkour hard |
 |--------|------|-------|--------------|----------------|--------------|
-| Mean reward | 28.77 | 24.01 | 30.70 | 20.98 | 14.44 |
-| Mean episode length | 1000.0 | 984.5 | 983.2 | 988.1 | 977.2 |
-| Fall rate | 0.44% | 5.41% | 4.00% | 6.75% | 7.27% |
-| XY tracking error | 0.2087 m/s | 0.3407 m/s | 0.3050 m/s | 0.3590 m/s | 0.4689 m/s |
+| Mean reward | 28.77 | 24.01 | 30.70 | 20.98 | 11.34 |
+| Mean episode length | 1000.0 | 984.5 | 983.2 | 988.1 | 941.7 |
+| Fall rate | 0.44% | 5.41% | 4.00% | 6.75% | 10.92% |
+| XY tracking error | 0.2087 m/s | 0.3407 m/s | 0.3050 m/s | 0.3590 m/s | 0.4407 m/s |
 
 This comparison supports two observations. First, rough terrain is a useful parent configuration: parkour easy starts from the same rough-terrain sensing and curriculum structure and remains stable. Second, the custom hard terrain is meaningfully harder than the official rough baseline, especially in tracking error and reward.
 
@@ -241,7 +241,7 @@ The current completed ablation is a terrain-difficulty ablation over the environ
 | Ablation axis | Evidence | Result |
 |---------------|----------|--------|
 | Flat vs. rough terrain | Official Isaac Lab baselines | Fall rate increases from 0.44% to 5.41%; XY tracking error increases from 0.2087 to 0.3407 m/s |
-| Easy vs. medium vs. hard parkour terrain | Custom parkour runs | Fall rate increases from 4.00% to 6.75% to 7.27%; XY tracking error increases from 0.3050 to 0.3590 to 0.4689 m/s |
+| Easy vs. medium vs. hard parkour terrain | Custom parkour runs | Fall rate increases from 4.00% to 6.75% to 10.92%; XY tracking error increases from 0.3050 to 0.3590 to 0.4407 m/s |
 
 Reward/observation ablations have not been run yet, so the completed ablation-style evidence is the terrain difficulty comparison.
 
@@ -258,14 +258,14 @@ NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_parkour.sh all
 | Metric | Easy | Medium | Hard |
 |--------|------|--------|------|
 | Episodes | 64 | 64 | 64 |
-| Success rate | 100.00% | 95.31% | 92.19% |
-| Fall rate | 0.00% | 4.69% | 7.81% |
-| Timeout rate | 100.00% | 95.31% | 92.19% |
-| Mean episode length | 2000.00 | 1945.97 | 1939.34 |
-| Mean XY tracking error | 3.2648 | 3.4487 | 5.2665 |
-| Mean yaw tracking error | 0.3719 | 0.3106 | 0.5213 |
+| Success rate | 100.00% | 95.31% | 87.50% |
+| Fall rate | 0.00% | 4.69% | 12.50% |
+| Timeout rate | 100.00% | 95.31% | 87.50% |
+| Mean episode length | 2000.00 | 1945.97 | 1809.97 |
+| Mean XY tracking error | 3.2648 | 3.4487 | 3.5624 |
+| Mean yaw tracking error | 0.3719 | 0.3106 | 0.4984 |
 
-The rollout evaluation confirms the same difficulty ordering as the training logs. Easy completes all sampled episodes. Medium introduces some base-contact failures, and hard has the highest failure rate and largest tracking error. The tracking-error numbers are computed as direct pre-step velocity-command error during rollout, so their absolute scale should be interpreted as an evaluation statistic rather than as the same normalized TensorBoard command metric used during training.
+The rollout evaluation confirms the same difficulty ordering as the training logs. Easy completes all sampled episodes. Medium introduces some base-contact failures, and hard has the highest failure rate. The tracking-error numbers are computed as direct pre-step velocity-command error during rollout, so their absolute scale should be interpreted as an evaluation statistic rather than as the same normalized TensorBoard command metric used during training.
 
 ### 5.6 Result files and figures
 
@@ -294,10 +294,9 @@ The rollout videos are stored under `report/assets/`.
 | Rough baseline play | `report/assets/rough_play.mp4` | Locomotion on procedural rough terrain with visibly higher difficulty |
 | Parkour easy play | `report/assets/parkour_easy_play.mp4` | Successful custom parkour rollout on the easiest terrain tier |
 | Parkour medium play | `report/assets/parkour_medium_play.mp4` | Custom parkour rollout with gap terrain and higher obstacles |
-| Parkour hard 3000 | `report/assets/parkour_hard3000_play.mp4` | Failure/undertrained hard-tier case before resumed training |
-| Parkour hard 4500 | `report/assets/parkour_hard4500_play.mp4` | Hard-tier rollout after resumed training to iteration 4498 |
+| Parkour hard | `report/assets/parkour_hard3000_play.mp4` | Official 3000-iteration hard-tier rollout |
 
-The hard 3000 checkpoint is used as the failure case because it represents the hard tier near its first training plateau, before the resumed segment partially recovers and improves. This supports the qualitative interpretation that the hard terrain is a real stress test rather than only a cosmetic terrain change.
+The hard checkpoint is kept at 3000 iterations so the qualitative video uses the same training budget as easy and medium. This supports the interpretation that the hard terrain is a real stress test under a fair comparison protocol rather than only a longer-training comparison.
 
 ---
 
@@ -307,7 +306,7 @@ The results establish a progression from flat locomotion to rough locomotion and
 
 The custom parkour results show that the inherited rough G1 configuration is a viable base for path-B parkour. Easy parkour converges reliably and keeps the fall rate below the rough baseline, despite using structured obstacles instead of generic rough terrain. Medium and hard then expose the expected degradation as gaps, obstacle heights, and platform constraints increase.
 
-The hard result is the most informative failure boundary. The reward curve reaches an early plateau around iteration 2500-3000. The resumed segment then shows an initial reward drop, followed by partial recovery and moderate improvement to about 14-15 mean reward. This is not the same pattern as easy or medium, which show stronger sustained improvement by iteration 3000. The hard result is therefore not merely a longer-training problem; it suggests that the inherited velocity-tracking objective is insufficient for the hardest terrain. Further improvement likely requires tuned command ranges, staged hard-terrain curriculum, or parkour-specific reward/termination terms such as forward progress, foothold safety, or obstacle-passing success.
+The hard result is the most informative failure boundary. Under the same 3000-iteration budget, hard has the lowest reward, highest fall rate, and weakest tracking quality among the parkour tiers. This suggests that the inherited velocity-tracking objective is insufficient for the hardest terrain distribution. Further improvement likely requires tuned command ranges, staged hard-terrain curriculum, or parkour-specific reward/termination terms such as forward progress, foothold safety, or obstacle-passing success.
 
 The main limitation is now the scope of the evaluation rather than the absence of evaluation. The fixed-checkpoint evaluator measures timeout success, base-contact failure, episode length, and velocity-command tracking error. It does not yet measure semantic obstacle completion, such as explicitly passing a named gap or stair sequence. Therefore, the reported success rate should be read as locomotion survival over parkour terrain, not as a full obstacle-by-obstacle parkour score.
 

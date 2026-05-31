@@ -19,13 +19,13 @@
 |------|--------|------------|------------------|
 | Easy | `2026-05-26_15-58-21` | 3000 | `model_2999.pt` |
 | Medium | `2026-05-26_17-39-43` | 3000 | `model_2999.pt` |
-| Hard | `2026-05-27_09-47-16` | 4499 | `model_4498.pt` |
+| Hard | `2026-05-26_20-22-02` | 3000 | `model_2999.pt` |
 
 Run artifacts are stored under `$HUMANOID_PARKOUR_RUNS_ROOT/parkour_{easy,medium,hard}/logs/rsl_rl/g1_parkour_{easy,medium,hard}/`.
 
-## Hard resume interpretation
+## Hard 3000 interpretation
 
-The hard initial run starts to plateau around iteration 2500-3000. The resumed segment begins with a visible reward drop, then recovers and improves moderately to the final checkpoint. This supports the conclusion that hard terrain is constrained by the inherited velocity-tracking formulation, not only by insufficient training time.
+The hard tier uses the 3000-iteration checkpoint for direct comparison with easy and medium. Its lower reward, higher fall rate, and weaker tracking metrics indicate that the hardest terrain preset is the clearest stress case under the inherited velocity-tracking formulation.
 
 ## Evaluation
 
@@ -39,6 +39,6 @@ Current rollout success rates:
 |------|--------------|-----------|
 | Easy | 100.00% | 0.00% |
 | Medium | 95.31% | 4.69% |
-| Hard | 92.19% | 7.81% |
+| Hard | 87.50% | 12.50% |
 
 Detailed metrics are in `results/metrics/parkour_eval.csv`.

@@ -12,9 +12,9 @@ from pathlib import Path
 
 ORDER = ("rough", "easy", "medium", "hard")
 METRICS = (
-    ("success_rate", "cross_terrain_success_rate.md", "Success rate", "percent"),
-    ("fall_rate", "cross_terrain_fall_rate.md", "Fall rate", "percent"),
-    ("mean_velocity_tracking_error", "cross_terrain_tracking_error.md", "XY velocity tracking error", "float3"),
+    ("success_rate", "success_rate", "Success rate", "percent"),
+    ("fall_rate", "fall_rate", "Fall rate", "percent"),
+    ("mean_velocity_tracking_error", "tracking_error", "XY velocity tracking error", "float3"),
 )
 
 
@@ -78,6 +78,12 @@ def main() -> None:
         default=Path("results/tables"),
         help="Directory for generated Markdown tables.",
     )
+    parser.add_argument(
+        "--output_prefix",
+        type=str,
+        default="cross_terrain",
+        help="Filename prefix for generated tables.",
+    )
     args = parser.parse_args()
 
     if not args.input_csv.exists():
@@ -85,8 +91,8 @@ def main() -> None:
 
     matrix = _read_rows(args.input_csv)
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    for metric_key, filename, title, style in METRICS:
-        _write_table(args.output_dir / filename, title, metric_key, style, matrix)
+    for metric_key, filename_suffix, title, style in METRICS:
+        _write_table(args.output_dir / f"{args.output_prefix}_{filename_suffix}.md", title, metric_key, style, matrix)
 
     print(f"Read: {args.input_csv}")
     print(f"Pairs: {len(matrix)}")

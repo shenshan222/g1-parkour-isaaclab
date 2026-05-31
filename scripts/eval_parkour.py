@@ -39,6 +39,9 @@ parser.add_argument("--num_envs", type=int, default=32, help="Number of parallel
 parser.add_argument("--terrain_num_rows", type=int, default=None, help="Override terrain generator row count for eval.")
 parser.add_argument("--terrain_num_cols", type=int, default=None, help="Override terrain generator column count for eval.")
 parser.add_argument("--terrain_sampling", type=str, default="", help="Terrain sampling label written to CSV metadata.")
+parser.add_argument("--terrain_fixed_row", type=int, default=None, help="Fix all envs to one terrain difficulty row.")
+parser.add_argument("--terrain_fixed_col", type=int, default=None, help="Optionally fix all envs to one terrain type column.")
+parser.add_argument("--stress_mode", type=str, default="", help="Stress-test mode label written to CSV metadata.")
 parser.add_argument(
     "--max_steps",
     type=int,
@@ -88,6 +91,32 @@ def _empty_level_rates() -> dict[str, str]:
     return {"pass_rate_level_0": "", "pass_rate_level_1": "", "pass_rate_level_2": ""}
 
 
+def _apply_fixed_terrain_selection(raw_env, fixed_row: int | None, fixed_col: int | None) -> bool:
+    if fixed_row is None and fixed_col is None:
+        return False
+
+    terrain = getattr(raw_env.scene, "terrain", None)
+    required_attrs = ("terrain_origins", "terrain_levels", "terrain_types", "env_origins")
+    if terrain is None or any(not hasattr(terrain, attr) for attr in required_attrs):
+        raise RuntimeError("Fixed terrain selection requires generated terrain origins and terrain level/type tensors.")
+    if terrain.terrain_origins is None:
+        raise RuntimeError("Fixed terrain selection requires terrain.terrain_origins, but this terrain has none.")
+
+    num_rows, num_cols = terrain.terrain_origins.shape[:2]
+    if fixed_row is not None and not 0 <= fixed_row < num_rows:
+        raise ValueError(f"--terrain_fixed_row={fixed_row} is out of range for terrain rows [0, {num_rows - 1}].")
+    if fixed_col is not None and not 0 <= fixed_col < num_cols:
+        raise ValueError(f"--terrain_fixed_col={fixed_col} is out of range for terrain cols [0, {num_cols - 1}].")
+
+    env_ids = torch.arange(raw_env.num_envs, device=terrain.terrain_levels.device)
+    if fixed_row is not None:
+        terrain.terrain_levels[env_ids] = fixed_row
+    if fixed_col is not None:
+        terrain.terrain_types[env_ids] = fixed_col
+    terrain.env_origins[env_ids] = terrain.terrain_origins[terrain.terrain_levels[env_ids], terrain.terrain_types[env_ids]]
+    return True
+
+
 def _write_row(output_csv: Path, row: dict[str, object], append: bool) -> None:
     output_csv.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
@@ -107,6 +136,9 @@ def _write_row(output_csv: Path, row: dict[str, object], append: bool) -> None:
         "terrain_num_rows",
         "terrain_num_cols",
         "terrain_sampling",
+        "stress_mode",
+        "terrain_fixed_row",
+        "terrain_fixed_col",
         "seed",
         "checkpoint",
         "task",
@@ -173,7 +205,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     episode_levels = torch.zeros(num_envs, dtype=torch.long, device=device)
 
     completed: list[dict[str, object]] = []
-    obs = env.get_observations()
+    if _apply_fixed_terrain_selection(env.unwrapped, args_cli.terrain_fixed_row, args_cli.terrain_fixed_col):
+        obs, _ = env.reset()
+    else:
+        obs = env.get_observations()
     steps = 0
 
     while simulation_app.is_running() and len(completed) < args_cli.num_episodes and steps < max_steps:
@@ -255,6 +290,9 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         "terrain_num_rows": args_cli.terrain_num_rows if args_cli.terrain_num_rows is not None else "",
         "terrain_num_cols": args_cli.terrain_num_cols if args_cli.terrain_num_cols is not None else "",
         "terrain_sampling": args_cli.terrain_sampling,
+        "stress_mode": args_cli.stress_mode,
+        "terrain_fixed_row": args_cli.terrain_fixed_row if args_cli.terrain_fixed_row is not None else "",
+        "terrain_fixed_col": args_cli.terrain_fixed_col if args_cli.terrain_fixed_col is not None else "",
         "seed": args_cli.seed,
         "checkpoint": checkpoint,
         "task": args_cli.task,

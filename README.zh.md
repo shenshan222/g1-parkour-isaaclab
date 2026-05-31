@@ -2,9 +2,30 @@
 
 [English](README.md)
 
-课程路径 B：在 Isaac Lab 中为 **Unitree G1** 定义 parkour 地形与 velocity-tracking 任务，使用 RSL-RL PPO 完成训练、评估与报告闭环。
+课程路径 B 项目：在 Isaac Lab 中为 **Unitree G1** 构建自定义 parkour 地形 curriculum 与 velocity-tracking 任务，并完成可复现的 PPO 训练、评估和报告工作流。
 
-Isaac Lab 保持为**外部依赖**；本仓库只包含自定义任务包、脚本与交付物。
+Isaac Lab 保持为**外部依赖**；本仓库只包含自定义任务包、流程脚本、轻量结果文件和报告交付物。
+
+## 当前结果
+
+正式对比采用统一 checkpoint 预算，三档 parkour 都使用 3000 iteration 结果。
+
+| 运行 | Iterations | Checkpoint | 说明 |
+|------|-----------:|------------|------|
+| Flat baseline | 1500 | `model_1499.pt` | 官方 flat G1 参考 |
+| Rough baseline | 3000 | `model_2999.pt` | 官方 rough G1 父任务 |
+| Parkour easy | 3000 | `model_2999.pt` | 保守结构化障碍 |
+| Parkour medium | 3000 | `model_2999.pt` | 加入 gap 和更强障碍 |
+| Parkour hard | 3000 | `model_2999.pt` | 最大 gap 与最难平台约束 |
+
+正式指标文件：
+
+- `results/metrics/parkour_training_summary.csv`
+- `results/metrics/parkour_eval.csv`
+- `results/metrics/cross_terrain_eval.csv`
+- `results/metrics/cross_terrain_stress_eval.csv`
+
+主评估链条是：固定 checkpoint diagonal rollout、4x4 random cross-terrain evaluation、4x4 fixed-row stress evaluation。
 
 ## 环境要求
 
@@ -34,9 +55,12 @@ export HUMANOID_PARKOUR_ROOT=/path/to/g1-parkour-isaaclab
 |------|------|
 | Flat baseline 训练 | `bash scripts/train_flat_baseline.sh` |
 | Rough baseline 训练 | `bash scripts/train_rough_baseline.sh` |
-| Parkour 训练 | `bash scripts/train_parkour.sh` |
-| Play / 录视频 | `bash scripts/play_parkour.sh` |
-| 评估指标 | `bash scripts/eval_parkour.sh` |
+| Parkour 训练 | `bash scripts/train_parkour.sh [all|easy|medium|hard]` |
+| Play / 录视频 | `bash scripts/play_parkour.sh [all|easy|medium|hard]` |
+| Diagonal rollout 评估 | `NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_parkour.sh all` |
+| Random 4x4 交叉评估 | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain.sh all` |
+| Fixed-row 4x4 压力测试 | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh all` |
+| 生成 cross/stress 表格 | `python scripts/summarize_cross_terrain_eval.py --input_csv <csv> --output_dir results/tables` |
 | TensorBoard | `bash scripts/launch_tensorboard.sh` |
 
 训练日志与 checkpoint 默认写到大盘路径；见 `humanoid_parkour/utils/paths.py`。这些文件**不**提交进 Git。
@@ -49,7 +73,7 @@ export HUMANOID_PARKOUR_ROOT=/path/to/g1-parkour-isaaclab
 | Medium | `Isaac-Velocity-Parkour-G1-Medium-v0` | `Isaac-Velocity-Parkour-G1-Medium-Play-v0` |
 | Hard | `Isaac-Velocity-Parkour-G1-Hard-v0` | `Isaac-Velocity-Parkour-G1-Hard-Play-v0` |
 
-脚本用法：`bash scripts/train_parkour.sh [all|easy|medium|hard]`，`bash scripts/play_parkour.sh` 接受相同的档位参数。
+官方 rough baseline 和 cross-eval source 任务使用 `Isaac-Velocity-Rough-G1-v0` / `Isaac-Velocity-Rough-G1-Play-v0`。
 
 ## 仓库结构
 
@@ -59,7 +83,7 @@ g1-parkour-isaaclab/
 ├── scripts/              # 训练 / play / eval 流程脚本
 ├── configs/              # 实验与消融设计说明（Markdown）
 ├── results/              # 可提交的 CSV、图表、表格
-├── report/               # 课程报告与媒体素材
+├── report/               # 课程报告与精选媒体素材
 └── docs/                 # 安装、训练、评估文档
 ```
 
