@@ -290,3 +290,40 @@
 - hard 4500 / resume 训练保留为真实探索流程记录，但不再作为正式对比和报告结论的数据来源。
 - 已补跑 hard3000 diagonal self-eval，并用 hard3000 替换正式 cross eval 与 fixed-row stress eval 中的 hard 行。
 
+## 2026-06-01：完成 Semantic Obstacle Evaluation 并统一评估入口
+
+- 在 timeout cross/stress 结构基础上实现 semantic obstacle evaluation。
+- Semantic pass 定义为：未发生 base-contact fall，且 `max_forward_distance_m >= 4.0`。
+- Strong pass 定义为：未发生 base-contact fall，且 `max_forward_distance_m >= 6.0`。
+- 正式 semantic evaluation 与 timeout 严格对齐，只保留 4x4 random cross-terrain 和 4x4 fixed-row stress 两类结果，不再保留 diagonal semantic 表和 episode-level 明细表。
+- 正式输出文件：
+  - `results/metrics/semantic_obstacle_cross_terrain_eval.csv`
+  - `results/metrics/semantic_obstacle_cross_terrain_stress_eval.csv`
+  - `results/tables/semantic_obstacle_cross_terrain_summary.md`
+  - `results/tables/semantic_obstacle_cross_terrain_stress_summary.md`
+- Semantic random cross-terrain 主要结果：
+
+| Checkpoint source | Eval rough | Eval easy | Eval medium | Eval hard |
+|---|---:|---:|---:|---:|
+| rough | 95.31% | 98.44% | 68.75% | 29.69% |
+| easy | 89.06% | 100.00% | 50.00% | 0.00% |
+| medium | 98.44% | 98.44% | 95.31% | 87.50% |
+| hard | 100.00% | 100.00% | 96.88% | 95.31% |
+
+- Semantic fixed-row stress 主要结果：
+
+| Checkpoint source | Eval rough | Eval easy | Eval medium | Eval hard |
+|---|---:|---:|---:|---:|
+| rough | 98.44% | 78.12% | 56.25% | 31.25% |
+| easy | 93.75% | 98.44% | 64.06% | 0.00% |
+| medium | 95.31% | 100.00% | 100.00% | 92.19% |
+| hard | 100.00% | 100.00% | 96.88% | 95.31% |
+
+- 随后将 timeout 与 semantic 的 cross/stress rollout 脚本合并：
+  - 新增 `scripts/eval_parkour_rollout.py` 作为统一底层 evaluator；
+  - 新增 `scripts/eval_cross_terrain.sh`，通过 `--metric timeout|semantic` 控制输出 timeout 或 semantic CSV；
+  - 新增 `scripts/eval_cross_terrain_stress.sh`，通过 `--metric timeout|semantic` 控制 stress evaluation；
+  - 删除旧的 cross/stress 分离 wrapper：`eval_timeout_cross_terrain*.sh` 和 `eval_semantic_obstacle_cross_terrain*.sh`；
+  - 保留 `eval_timeout_parkour.py` / `eval_timeout_parkour.sh`，因为 diagonal timeout self-evaluation 仍是正式链路的一部分。
+- 当前解释：semantic obstacle metrics 与 timeout metrics 在 cross/stress 结构上完全对齐，但衡量对象不同。timeout 衡量 survival-style locomotion robustness；semantic pass 进一步要求策略在未摔倒前达到最小前进距离阈值。
+

@@ -1,15 +1,10 @@
 #!/usr/bin/env bash
-# Run 4x4 cross-terrain fixed-checkpoint evaluation rollouts.
+# Run 4x4 cross-terrain evaluation rollouts with timeout or semantic metrics.
 #
 # Usage:
-#   bash scripts/eval_timeout_cross_terrain.sh [all|SOURCE [EVAL_ENV]]
+#   bash scripts/eval_cross_terrain.sh [--metric timeout|semantic] [all|SOURCE [EVAL_ENV]]
 #
 # SOURCE/EVAL_ENV: rough | easy | medium | hard
-#
-# Examples:
-#   bash scripts/eval_timeout_cross_terrain.sh all
-#   bash scripts/eval_timeout_cross_terrain.sh rough
-#   NUM_EPISODES=4 NUM_ENVS=4 bash scripts/eval_timeout_cross_terrain.sh hard easy
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -17,23 +12,63 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "${SCRIPT_DIR}/_env.sh"
 
 ORDER=(rough easy medium hard)
-OUT_CSV="${CROSS_EVAL_CSV:-${HUMANOID_PARKOUR_ROOT}/results/metrics/timeout_cross_terrain_eval.csv}"
+EVAL_METRIC="${EVAL_METRIC:-timeout}"
+SCRIPT_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --metric)
+      if [[ $# -lt 2 ]]; then
+        echo "ERROR: --metric requires timeout or semantic" >&2
+        exit 1
+      fi
+      EVAL_METRIC="$2"
+      shift 2
+      ;;
+    --metric=*)
+      EVAL_METRIC="${1#--metric=}"
+      shift
+      ;;
+    *)
+      SCRIPT_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+case "${EVAL_METRIC}" in
+  timeout | semantic) ;;
+  *)
+    echo "ERROR: EVAL_METRIC/--metric must be timeout or semantic" >&2
+    exit 1
+    ;;
+esac
+
+if [[ "${EVAL_METRIC}" == "timeout" ]]; then
+  OUT_CSV="${CROSS_EVAL_CSV:-${HUMANOID_PARKOUR_ROOT}/results/metrics/timeout_cross_terrain_eval.csv}"
+else
+  OUT_CSV="${SEMANTIC_CROSS_EVAL_CSV:-${HUMANOID_PARKOUR_ROOT}/results/metrics/semantic_obstacle_cross_terrain_eval.csv}"
+fi
 TERRAIN_NUM_ROWS="${TERRAIN_NUM_ROWS:-10}"
 TERRAIN_NUM_COLS="${TERRAIN_NUM_COLS:-10}"
 TERRAIN_SAMPLING="${TERRAIN_SAMPLING:-random_uniform_difficulty}"
+PASS_DISTANCE_M="${PASS_DISTANCE_M:-4.0}"
+STRONG_PASS_DISTANCE_M="${STRONG_PASS_DISTANCE_M:-6.0}"
 
 usage() {
   cat <<'EOF'
-Usage: bash scripts/eval_timeout_cross_terrain.sh [all|SOURCE [EVAL_ENV]]
+Usage: bash scripts/eval_cross_terrain.sh [--metric timeout|semantic] [all|SOURCE [EVAL_ENV]]
 
   SOURCE/EVAL_ENV: rough | easy | medium | hard
+  Metric can also be set with EVAL_METRIC=timeout|semantic.
 
 Examples:
-  bash scripts/eval_timeout_cross_terrain.sh all
-  bash scripts/eval_timeout_cross_terrain.sh rough
-  NUM_EPISODES=4 NUM_ENVS=4 bash scripts/eval_timeout_cross_terrain.sh hard easy
+  bash scripts/eval_cross_terrain.sh --metric timeout all
+  bash scripts/eval_cross_terrain.sh --metric semantic all
+  NUM_EPISODES=4 NUM_ENVS=4 bash scripts/eval_cross_terrain.sh --metric semantic hard easy
 
 Environment overrides:
+  EVAL_METRIC=timeout
   NUM_EPISODES=64
   NUM_ENVS=32
   SEED=42
@@ -41,6 +76,9 @@ Environment overrides:
   TERRAIN_NUM_COLS=10
   TERRAIN_SAMPLING=random_uniform_difficulty
   CROSS_EVAL_CSV=/path/to/timeout_cross_terrain_eval.csv
+  SEMANTIC_CROSS_EVAL_CSV=/path/to/semantic_obstacle_cross_terrain_eval.csv
+  PASS_DISTANCE_M=4.0
+  STRONG_PASS_DISTANCE_M=6.0
   CHECKPOINT_ROUGH=/path/to/model.pt
   CHECKPOINT_EASY=/path/to/model.pt
   CHECKPOINT_MEDIUM=/path/to/model.pt
@@ -96,10 +134,6 @@ resolve_pairs() {
   _sources=()
   _envs=()
 
-  if [[ $# -gt 2 ]]; then
-    shift 2
-  fi
-
   case "${#SCRIPT_ARGS[@]}" in
     0)
       _sources=("${ORDER[@]}")
@@ -136,34 +170,42 @@ resolve_pairs() {
       _envs=("${SCRIPT_ARGS[1]}")
       ;;
     *)
-      echo "ERROR: expected zero, one, or two arguments" >&2
+      echo "ERROR: expected zero, one, or two positional arguments" >&2
       usage >&2
       exit 1
       ;;
   esac
 }
 
+run_name_for_pair() {
+  if [[ "${EVAL_METRIC}" == "timeout" ]]; then
+    echo "$1_to_$2"
+  else
+    echo "semantic_$1_to_$2"
+  fi
+}
+
 eval_one_pair() {
   local source="$1" eval_env="$2" task ckpt run_name
-
   task="$(task_for_env "${eval_env}")"
   ckpt="$(checkpoint_for_source "${source}" || true)"
   if [[ -z "${ckpt}" ]]; then
     echo "ERROR: no checkpoint found for source '${source}'" >&2
     exit 1
   fi
-  run_name="${source}_to_${eval_env}"
+  run_name="$(run_name_for_pair "${source}" "${eval_env}")"
 
   echo ""
   echo "============================================================"
-  echo "  Cross-terrain EVAL - ${run_name}"
+  echo "  ${EVAL_METRIC} cross-terrain EVAL - ${run_name}"
   echo "============================================================"
   echo "Task: ${task}"
   echo "Checkpoint: ${ckpt}"
   echo "Terrain grid: ${TERRAIN_NUM_ROWS}x${TERRAIN_NUM_COLS}"
   echo "Output: ${OUT_CSV}"
 
-  run_isaaclab_entrypoint "${SCRIPT_DIR}/eval_timeout_parkour.py" \
+  run_isaaclab_entrypoint "${SCRIPT_DIR}/eval_parkour_rollout.py" \
+    --metric="${EVAL_METRIC}" \
     --task="${task}" \
     --eval_name="${run_name}" \
     --checkpoint_source="${source}" \
@@ -176,6 +218,8 @@ eval_one_pair() {
     --terrain_num_rows="${TERRAIN_NUM_ROWS}" \
     --terrain_num_cols="${TERRAIN_NUM_COLS}" \
     --terrain_sampling="${TERRAIN_SAMPLING}" \
+    --pass_distance_m="${PASS_DISTANCE_M}" \
+    --strong_pass_distance_m="${STRONG_PASS_DISTANCE_M}" \
     --headless \
     --append
 
@@ -185,7 +229,6 @@ eval_one_pair() {
   fi
 }
 
-SCRIPT_ARGS=("$@")
 SOURCES=()
 EVAL_ENVS=()
 resolve_pairs SOURCES EVAL_ENVS
@@ -193,7 +236,6 @@ resolve_pairs SOURCES EVAL_ENVS
 activate_conda
 ensure_package_installed
 
-# Start from a fresh combined CSV for full matrix/default evaluations.
 if [[ ${#SOURCES[@]} -gt 1 || ${#EVAL_ENVS[@]} -gt 1 ]]; then
   rm -f "${OUT_CSV}"
 fi
@@ -205,5 +247,5 @@ for source in "${SOURCES[@]}"; do
 done
 
 echo ""
-echo "Cross-terrain evaluation finished."
+echo "${EVAL_METRIC} cross-terrain evaluation finished."
 echo "CSV: ${OUT_CSV}"

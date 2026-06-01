@@ -18,14 +18,18 @@ The official comparison uses a consistent checkpoint budget for the three parkou
 | Parkour medium | 3000 | `model_2999.pt` | Adds gaps and stronger obstacles |
 | Parkour hard | 3000 | `model_2999.pt` | Widest gaps and hardest platforms |
 
-Official metrics are stored in:
+Official run-level metrics are stored in:
 
 - `results/metrics/parkour_training_summary.csv`
 - `results/metrics/parkour_timeout_eval.csv`
 - `results/metrics/timeout_cross_terrain_eval.csv`
 - `results/metrics/timeout_cross_terrain_stress_eval.csv`
+- `results/metrics/semantic_obstacle_cross_terrain_eval.csv`
+- `results/metrics/semantic_obstacle_cross_terrain_stress_eval.csv`
 
-The current timeout-based evaluation chain is: diagonal fixed-checkpoint rollout evaluation, 4x4 random cross-terrain evaluation, and 4x4 fixed-row stress evaluation.
+The current evaluation chain is: diagonal fixed-checkpoint timeout rollout evaluation, timeout 4x4 random cross-terrain evaluation, timeout 4x4 fixed-row stress evaluation, semantic obstacle 4x4 random cross-terrain evaluation, and semantic obstacle 4x4 fixed-row stress evaluation.
+
+Cross/stress rollouts share the unified evaluator `scripts/eval_parkour_rollout.py`; select timeout or semantic obstacle metrics through `--metric timeout|semantic` in `eval_cross_terrain.sh` and `eval_cross_terrain_stress.sh`.
 
 ## Requirements
 
@@ -58,9 +62,12 @@ export HUMANOID_PARKOUR_ROOT=/path/to/g1-parkour-isaaclab
 | Train parkour tasks | `bash scripts/train_parkour.sh [all|easy|medium|hard]` |
 | Play / record videos | `bash scripts/play_parkour.sh [all|easy|medium|hard]` |
 | Diagonal rollout evaluation | `NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_timeout_parkour.sh all` |
-| Random 4x4 cross-terrain evaluation | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_timeout_cross_terrain.sh all` |
-| Fixed-row 4x4 stress evaluation | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_timeout_cross_terrain_stress.sh all` |
+| Timeout random 4x4 cross-terrain evaluation | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain.sh --metric timeout all` |
+| Timeout fixed-row 4x4 stress evaluation | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh --metric timeout all` |
+| Semantic random 4x4 cross-terrain evaluation | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain.sh --metric semantic all` |
+| Semantic fixed-row 4x4 stress evaluation | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh --metric semantic all` |
 | Generate cross/stress tables | `python scripts/summarize_timeout_cross_terrain_eval.py --input_csv <csv> --output_dir results/tables` |
+| Generate semantic cross/stress tables | `python scripts/summarize_semantic_obstacle_eval.py --input_csv <csv> --output_dir results/tables --output_prefix <prefix>` |
 | TensorBoard | `bash scripts/launch_tensorboard.sh` |
 
 Training logs and checkpoints are written to the large-disk run root by default; see `humanoid_parkour/utils/paths.py`. They should **not** be committed to Git.
