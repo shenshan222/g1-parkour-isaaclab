@@ -337,3 +337,15 @@
 - 更新 `docs/evaluation.md` 和 `README.md`：加入新增分析表入口。
 - 重要解释：traversal progress 仍是 forward-distance proxy，不是 terrain-aware obstacle-boundary crossing；真正逐障碍通过率仍属于未来工作。
 
+## 2026-06-02：实现 Obstacle Crossing Evaluation
+
+- 新增正式 obstacle crossing evaluation，作为 timeout/progress 之后的第三类 cross/stress evaluation metric。
+- `scripts/eval_parkour_rollout.py` 支持 `--metric obstacle`，并在 obstacle 模式下使用 deterministic terrain columns，以保证 terrain column 与 gap/stairs 类型映射可靠。
+- `scripts/eval_cross_terrain.sh` 与 `scripts/eval_cross_terrain_stress.sh` 支持 `--metric timeout|progress|obstacle`。
+- 新增 `humanoid_parkour/evaluation/obstacle_crossing.py` 和 `scripts/summarize_obstacle_crossing_eval.py`。
+- 正式 success 定义：未发生 base-contact fall，且 base 跨过 gap 或 stairs 的几何边界。
+- Gap boundary 使用中心平台远侧 gap 边界加 margin；stairs boundary 使用前向外侧 stair-field 边界。
+- CSV 输出字段包括 `obstacle_pass_rate`、`gap_pass_rate`、`stairs_pass_rate`、`fall_before_obstacle_rate`、`boundary_coverage`。
+- 解释边界：该指标是 base-level geometry-boundary obstacle crossing，不是 foot-contact-level verification；boxes/rough/slope 不纳入正式 obstacle pass aggregation。
+- 已完成静态检查和最小 smoke 检查，尚未运行正式 hard-focused obstacle evaluation。
+

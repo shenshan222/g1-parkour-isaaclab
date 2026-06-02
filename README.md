@@ -33,9 +33,9 @@ Report-oriented analysis tables are stored in:
 - `results/tables/generalization_analysis.md`
 - `results/tables/timeout_vs_progress_delta.md`
 
-The current evaluation chain is: diagonal fixed-checkpoint timeout rollout evaluation, timeout 4x4 random cross-terrain evaluation, timeout 4x4 fixed-row stress evaluation, traversal progress 4x4 random cross-terrain evaluation, and traversal progress 4x4 fixed-row stress evaluation.
+The current completed result chain is: diagonal fixed-checkpoint timeout rollout evaluation, timeout 4x4 random cross-terrain evaluation, timeout 4x4 fixed-row stress evaluation, traversal progress 4x4 random cross-terrain evaluation, and traversal progress 4x4 fixed-row stress evaluation.
 
-Cross/stress rollouts share the unified evaluator `scripts/eval_parkour_rollout.py`; select timeout or traversal progress metrics through `--metric timeout|progress` in `eval_cross_terrain.sh` and `eval_cross_terrain_stress.sh`.
+Cross/stress rollouts share the unified evaluator `scripts/eval_parkour_rollout.py`; select timeout, traversal progress, or obstacle crossing metrics through `--metric timeout|progress|obstacle` in `eval_cross_terrain.sh` and `eval_cross_terrain_stress.sh`. Obstacle crossing measures base-level geometry-boundary success for gap/stairs terrain and is implemented, but its official CSV results are not yet part of the completed result set above.
 
 ## Requirements
 
@@ -72,8 +72,11 @@ export HUMANOID_PARKOUR_ROOT=/path/to/g1-parkour-isaaclab
 | Timeout fixed-row 4x4 stress evaluation | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh --metric timeout all` |
 | Progress random 4x4 cross-terrain evaluation | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain.sh --metric progress all` |
 | Progress fixed-row 4x4 stress evaluation | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh --metric progress all` |
+| Obstacle random 4x4 cross-terrain evaluation | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain.sh --metric obstacle all` |
+| Obstacle fixed-row 4x4 stress evaluation, recommended | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh --metric obstacle all` |
 | Generate cross/stress tables | `python scripts/summarize_timeout_cross_terrain_eval.py --input_csv <csv> --output_dir results/tables` |
 | Generate progress cross/stress tables | `python scripts/summarize_traversal_progress_eval.py --input_csv <csv> --output_dir results/tables --output_prefix <prefix>` |
+| Generate obstacle cross/stress tables | `python scripts/summarize_obstacle_crossing_eval.py --input_csv <csv> --output_dir results/tables --output_prefix <prefix>` |
 | TensorBoard | `bash scripts/launch_tensorboard.sh` |
 
 Training logs and checkpoints are written to the large-disk run root by default; see `humanoid_parkour/utils/paths.py`. They should **not** be committed to Git.

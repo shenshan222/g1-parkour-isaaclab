@@ -89,6 +89,26 @@ Output files:
 
 Progress pass is defined as no fall and `max_forward_distance_m >= 4.0`. Strong progress pass is defined as no fall and `max_forward_distance_m >= 6.0`. These metrics estimate obstacle traversal progress and complement timeout-based survival metrics; they should not replace the existing timeout tables.
 
+## Obstacle Crossing Evaluation
+
+Obstacle crossing evaluation uses the unified cross/stress scripts with `--metric obstacle`. This metric reports base-level geometry-boundary crossing success for gap and stairs terrain. It does not use the traversal-progress threshold as the official obstacle success definition.
+
+Random 4x4 obstacle crossing evaluation is supported, but the recommended official protocol is fixed-row stress evaluation because obstacle terrain columns are deterministic and easier to interpret.
+
+```bash
+NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh --metric obstacle all
+python scripts/summarize_obstacle_crossing_eval.py   --input_csv results/metrics/obstacle_crossing_cross_terrain_stress_eval.csv   --output_dir results/tables   --output_prefix obstacle_crossing_cross_terrain_stress
+```
+
+Expected output files after running the official stress command:
+
+- `results/metrics/obstacle_crossing_cross_terrain_stress_eval.csv`
+- `results/tables/obstacle_crossing_cross_terrain_stress_summary.md`
+
+Obstacle pass is defined as no `base_contact` failure and successful base-level crossing of a supported obstacle boundary. For gap terrain, the boundary is the far side of the gap plus a small margin. For stairs terrain, the boundary is the forward outer stair-field boundary. Unsupported terrain groups such as boxes, rough, and slope are recorded in coverage metadata but are not included in `obstacle_pass_rate`.
+
+The generated obstacle CSV contains `obstacle_pass_rate`, `gap_pass_rate`, `stairs_pass_rate`, `fall_before_obstacle_rate`, `boundary_coverage`, and `mean_boundary_x_m`.
+
 ## Analysis tables
 
 Result-analysis tables used by the report are stored in:
@@ -102,6 +122,8 @@ Result-analysis tables used by the report are stored in:
 ## Result interpretation
 
 The current timeout definition is `timeout_without_base_contact`. It measures locomotion survival over the sampled terrain distribution, not terrain-aware obstacle-by-obstacle completion.
+
+Traversal progress measures forward-distance success without separating obstacle types. Obstacle crossing measures base-level geometry-boundary success for gap/stairs terrain. It still does not verify foot-contact-level obstacle completion.
 
 Random cross-terrain evaluation measures average generalization across terrain samples. Fixed-row stress evaluation measures high-row robustness inside each terrain preset.
 

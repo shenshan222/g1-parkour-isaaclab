@@ -2,7 +2,7 @@
 # Copyright (c) Humanoid Parkour Course Project.
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Evaluate trained G1 policies with timeout or traversal progress metrics."""
+"""Evaluate trained G1 policies with timeout, progress, or obstacle metrics."""
 
 from __future__ import annotations
 
@@ -20,8 +20,8 @@ from isaaclab.app import AppLauncher  # noqa: E402
 
 import cli_args  # noqa: E402
 
-parser = argparse.ArgumentParser(description="Evaluate a trained G1 checkpoint with timeout or traversal progress metrics.")
-parser.add_argument("--metric", choices=("timeout", "progress"), default="timeout", help="Evaluation metric family to write.")
+parser = argparse.ArgumentParser(description="Evaluate a trained G1 checkpoint with timeout, traversal progress, or obstacle metrics.")
+parser.add_argument("--metric", choices=("timeout", "progress", "obstacle"), default="timeout", help="Evaluation metric family to write.")
 parser.add_argument("--task", required=True, type=str, help="Isaac Lab Gym task id, usually a *-Play-v0 task.")
 parser.add_argument("--agent", type=str, default="rsl_rl_cfg_entry_point", help="RL agent config entry point.")
 parser.add_argument("--eval_name", required=True, type=str, help="Name written into the CSV row.")
@@ -73,7 +73,18 @@ from isaaclab_rl.rsl_rl import RslRlBaseRunnerCfg, RslRlVecEnvWrapper, handle_de
 from isaaclab_tasks.utils.hydra import hydra_task_config  # noqa: E402
 
 import humanoid_parkour.tasks.g1_parkour  # noqa: F401,E402
-from humanoid_parkour.evaluation.traversal_progress import TraversalProgressCriteria, evaluate_progress_pass  # noqa: E402
+from humanoid_parkour.evaluation.obstacle_crossing import (  # noqa: E402
+    ObstacleBoundaryCriteria,
+    compute_obstacle_boundary_x_m,
+    evaluate_obstacle_boundary_pass,
+    obstacle_group_for_terrain_type,
+    sub_terrain_cfg_for_type,
+)
+from humanoid_parkour.evaluation.traversal_progress import (  # noqa: E402
+    TraversalProgressCriteria,
+    evaluate_progress_pass,
+    terrain_type_by_column,
+)
 
 TIMEOUT_FIELDNAMES = [
     "run_name",
@@ -128,6 +139,37 @@ PROGRESS_FIELDNAMES = [
     "strong_progress_definition",
 ]
 
+OBSTACLE_FIELDNAMES = [
+    "run_name",
+    "obstacle_pass_rate",
+    "gap_pass_rate",
+    "stairs_pass_rate",
+    "fall_before_obstacle_rate",
+    "fall_rate",
+    "timeout_rate",
+    "mean_boundary_x_m",
+    "mean_max_local_x_m",
+    "mean_velocity_tracking_error",
+    "mean_yaw_tracking_error",
+    "mean_episode_length",
+    "num_episodes",
+    "boundary_coverage",
+    "terrain_type_coverage",
+    "checkpoint_source",
+    "eval_env",
+    "terrain_num_rows",
+    "terrain_num_cols",
+    "terrain_sampling",
+    "stress_mode",
+    "terrain_fixed_row",
+    "terrain_fixed_col",
+    "seed",
+    "checkpoint",
+    "task",
+    "num_envs",
+    "obstacle_definition",
+]
+
 
 def _apply_fixed_terrain_selection(raw_env, fixed_row: int | None, fixed_col: int | None) -> bool:
     if fixed_row is None and fixed_col is None:
@@ -177,6 +219,54 @@ def _rate(episodes: list[dict[str, object]], key: str) -> float:
 
 def _mean(episodes: list[dict[str, object]], key: str) -> float:
     return sum(float(ep[key]) for ep in episodes) / len(episodes)
+
+
+def _optional_group_rate(episodes: list[dict[str, object]], group: str, key: str) -> str:
+    group_episodes = [ep for ep in episodes if ep.get("obstacle_group") == group and ep.get(key) != ""]
+    if not group_episodes:
+        return ""
+    return f"{sum(float(ep[key]) for ep in group_episodes) / len(group_episodes):.4f}"
+
+
+def _optional_rate(episodes: list[dict[str, object]], key: str) -> str:
+    valid = [ep for ep in episodes if ep.get(key) != ""]
+    if not valid:
+        return ""
+    return f"{sum(float(ep[key]) for ep in valid) / len(valid):.4f}"
+
+
+def _optional_mean(episodes: list[dict[str, object]], key: str) -> str:
+    valid = [ep for ep in episodes if ep.get(key) != ""]
+    if not valid:
+        return ""
+    return f"{sum(float(ep[key]) for ep in valid) / len(valid):.4f}"
+
+
+def _boundary_coverage(episodes: list[dict[str, object]]) -> str:
+    counts: dict[str, int] = {}
+    for ep in episodes:
+        if ep.get("boundary_x_m") == "":
+            continue
+        group = str(ep.get("obstacle_group", "other"))
+        counts[group] = counts.get(group, 0) + 1
+    return ";".join(f"{group}:{counts[group]}" for group in sorted(counts))
+
+
+def _terrain_type_coverage(episodes: list[dict[str, object]]) -> str:
+    counts: dict[str, int] = {}
+    for ep in episodes:
+        group = str(ep.get("obstacle_group", "other"))
+        counts[group] = counts.get(group, 0) + 1
+    return ";".join(f"{group}:{counts[group]}" for group in sorted(counts))
+
+
+def _terrain_column_types(terrain_generator) -> list[str]:
+    if terrain_generator is None or not hasattr(terrain_generator, "sub_terrains"):
+        return []
+    num_cols = int(getattr(terrain_generator, "num_cols", 0) or 0)
+    if num_cols <= 0:
+        return []
+    return terrain_type_by_column(terrain_generator, num_cols)
 
 
 def _metadata(checkpoint: str, num_envs: int) -> dict[str, object]:
@@ -233,6 +323,29 @@ def _progress_row(episodes: list[dict[str, object]], checkpoint: str, num_envs: 
     return row
 
 
+def _obstacle_row(episodes: list[dict[str, object]], checkpoint: str, num_envs: int) -> dict[str, object]:
+    row: dict[str, object] = {
+        "run_name": args_cli.eval_name,
+        "obstacle_pass_rate": _optional_rate(episodes, "obstacle_pass"),
+        "gap_pass_rate": _optional_group_rate(episodes, "gap", "obstacle_pass"),
+        "stairs_pass_rate": _optional_group_rate(episodes, "stairs", "obstacle_pass"),
+        "fall_before_obstacle_rate": _optional_rate(episodes, "fall_before_obstacle"),
+        "fall_rate": f"{_rate(episodes, 'fell'):.4f}",
+        "timeout_rate": f"{_rate(episodes, 'timeout'):.4f}",
+        "mean_boundary_x_m": _optional_mean(episodes, "boundary_x_m"),
+        "mean_max_local_x_m": _optional_mean(episodes, "max_local_x_m"),
+        "mean_velocity_tracking_error": f"{_mean(episodes, 'xy_error'):.4f}",
+        "mean_yaw_tracking_error": f"{_mean(episodes, 'yaw_error'):.4f}",
+        "mean_episode_length": f"{_mean(episodes, 'length'):.2f}",
+        "num_episodes": len(episodes),
+        "boundary_coverage": _boundary_coverage(episodes),
+        "terrain_type_coverage": _terrain_type_coverage(episodes),
+        "obstacle_definition": "base_crosses_gap_or_stairs_geometry_boundary_without_base_contact",
+    }
+    row.update(_metadata(checkpoint, num_envs))
+    return row
+
+
 @hydra_task_config(args_cli.task, args_cli.agent)
 def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: RslRlBaseRunnerCfg):
     agent_cfg = cli_args.update_rsl_rl_cfg(agent_cfg, args_cli)
@@ -247,7 +360,9 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
             terrain_generator.num_rows = args_cli.terrain_num_rows
         if args_cli.terrain_num_cols is not None:
             terrain_generator.num_cols = args_cli.terrain_num_cols
-        terrain_generator.curriculum = False
+        terrain_generator.curriculum = args_cli.metric == "obstacle"
+    terrain_column_types = _terrain_column_types(terrain_generator)
+    terrain_generator_cfg = terrain_generator
 
     checkpoint = retrieve_file_path(args_cli.checkpoint)
     env_cfg.log_dir = os.path.dirname(checkpoint)
@@ -281,9 +396,17 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     episode_lengths = torch.zeros(num_envs, dtype=torch.long, device=device)
     episode_xy_error = torch.zeros(num_envs, dtype=torch.float32, device=device)
     episode_yaw_error = torch.zeros(num_envs, dtype=torch.float32, device=device)
+    terrain = getattr(raw_env.scene, "terrain", None)
     start_x = robot.data.root_pos_w[:, 0].detach().clone()
     max_forward = torch.zeros(num_envs, dtype=torch.float32, device=device)
-    criteria = TraversalProgressCriteria(args_cli.pass_distance_m, args_cli.strong_pass_distance_m)
+    progress_criteria = TraversalProgressCriteria(args_cli.pass_distance_m, args_cli.strong_pass_distance_m)
+    boundary_criteria = ObstacleBoundaryCriteria()
+    if terrain is not None and hasattr(terrain, "terrain_levels") and hasattr(terrain, "terrain_types"):
+        episode_terrain_levels = terrain.terrain_levels.detach().clone()
+        episode_terrain_types = terrain.terrain_types.detach().clone()
+    else:
+        episode_terrain_levels = torch.full((num_envs,), -1, dtype=torch.long, device=device)
+        episode_terrain_types = torch.full((num_envs,), -1, dtype=torch.long, device=device)
 
     completed: list[dict[str, object]] = []
     steps = 0
@@ -293,7 +416,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         robot = raw_env.scene["robot"]
         root_x = robot.data.root_pos_w[:, 0]
         forward = root_x - start_x
-        if args_cli.metric == "progress":
+        if args_cli.metric in {"progress", "obstacle"}:
             max_forward = torch.maximum(max_forward, forward)
 
         command = raw_env.command_manager.get_command("base_velocity")
@@ -331,7 +454,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
                     progress_pass, strong_progress_pass = evaluate_progress_pass(
                         max_forward_distance_m=max_forward_distance,
                         fell=fell,
-                        criteria=criteria,
+                        criteria=progress_criteria,
                     )
                     ep.update(
                         {
@@ -341,6 +464,37 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
                             "strong_progress_pass": int(strong_progress_pass),
                         }
                     )
+                elif args_cli.metric == "obstacle":
+                    terrain_col = int(episode_terrain_types[env_id].item())
+                    terrain_row = int(episode_terrain_levels[env_id].item())
+                    terrain_type = terrain_column_types[terrain_col] if 0 <= terrain_col < len(terrain_column_types) else "unknown"
+                    obstacle_group = obstacle_group_for_terrain_type(terrain_type)
+                    max_local_x = float(max_forward[env_id].detach().cpu().item())
+                    sub_terrain_cfg = sub_terrain_cfg_for_type(terrain_generator_cfg, terrain_type)
+                    boundary_x = compute_obstacle_boundary_x_m(
+                        terrain_type=terrain_type,
+                        sub_terrain_cfg=sub_terrain_cfg,
+                        terrain_row=terrain_row,
+                        num_rows=args_cli.terrain_num_rows,
+                        criteria=boundary_criteria,
+                    )
+                    obstacle_pass, fall_before_obstacle = evaluate_obstacle_boundary_pass(
+                        max_local_x_m=max_local_x,
+                        fell=fell,
+                        boundary_x_m=boundary_x,
+                    )
+                    ep.update(
+                        {
+                            "terrain_row": terrain_row,
+                            "terrain_col": terrain_col,
+                            "terrain_type": terrain_type,
+                            "obstacle_group": obstacle_group,
+                            "max_local_x_m": "" if boundary_x is None else max_local_x,
+                            "boundary_x_m": "" if boundary_x is None else float(boundary_x),
+                            "obstacle_pass": "" if obstacle_pass is None else int(obstacle_pass),
+                            "fall_before_obstacle": "" if fall_before_obstacle is None else int(fall_before_obstacle),
+                        }
+                    )
                 completed.append(ep)
                 episode_lengths[env_id] = 0
                 episode_xy_error[env_id] = 0.0
@@ -348,6 +502,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
                 max_forward[env_id] = 0.0
 
             start_x[done_ids] = robot.data.root_pos_w[done_ids, 0].detach()
+            terrain = getattr(env.unwrapped.scene, "terrain", None)
+            if terrain is not None and hasattr(terrain, "terrain_levels") and hasattr(terrain, "terrain_types"):
+                episode_terrain_levels[done_ids] = terrain.terrain_levels[done_ids].detach()
+                episode_terrain_types[done_ids] = terrain.terrain_types[done_ids].detach()
 
         steps += 1
 
@@ -361,9 +519,12 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     if args_cli.metric == "timeout":
         row = _timeout_row(episodes, checkpoint, num_envs)
         fieldnames = TIMEOUT_FIELDNAMES
-    else:
+    elif args_cli.metric == "progress":
         row = _progress_row(episodes, checkpoint, num_envs)
         fieldnames = PROGRESS_FIELDNAMES
+    else:
+        row = _obstacle_row(episodes, checkpoint, num_envs)
+        fieldnames = OBSTACLE_FIELDNAMES
     _write_row(output_csv, row, fieldnames, append=args_cli.append)
 
     print("[INFO] Evaluation complete")
@@ -372,9 +533,15 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     print(f"[INFO] Episodes: {len(episodes)}")
     if args_cli.metric == "timeout":
         print(f"[INFO] Timeout rate: {row['timeout_rate']}")
-    else:
+    elif args_cli.metric == "progress":
         print(f"[INFO] Progress pass rate: {row['progress_pass_rate']}")
         print(f"[INFO] Strong pass rate: {row['strong_progress_pass_rate']}")
+    else:
+        print(f"[INFO] Obstacle pass rate: {row['obstacle_pass_rate']}")
+        print(f"[INFO] Gap pass rate: {row['gap_pass_rate']}")
+        print(f"[INFO] Stairs pass rate: {row['stairs_pass_rate']}")
+        print(f"[INFO] Fall before obstacle rate: {row['fall_before_obstacle_rate']}")
+        print(f"[INFO] Boundary coverage: {row['boundary_coverage']}")
     print(f"[INFO] Fall rate: {row['fall_rate']}")
     print(f"[INFO] Wrote: {output_csv}")
 

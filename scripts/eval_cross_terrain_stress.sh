@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Run fixed-row 4x4 cross-terrain stress evaluation rollouts with timeout or progress metrics.
+# Run fixed-row 4x4 cross-terrain stress evaluation rollouts with timeout, progress, or obstacle metrics.
 #
 # Usage:
-#   bash scripts/eval_cross_terrain_stress.sh [--metric timeout|progress] [all|SOURCE [EVAL_ENV]]
+#   bash scripts/eval_cross_terrain_stress.sh [--metric timeout|progress|obstacle] [all|SOURCE [EVAL_ENV]]
 #
 # SOURCE/EVAL_ENV: rough | easy | medium | hard
 set -euo pipefail
@@ -19,7 +19,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --metric)
       if [[ $# -lt 2 ]]; then
-        echo "ERROR: --metric requires timeout or progress" >&2
+        echo "ERROR: --metric requires timeout, progress, or obstacle" >&2
         exit 1
       fi
       EVAL_METRIC="$2"
@@ -37,17 +37,19 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "${EVAL_METRIC}" in
-  timeout | progress) ;;
+  timeout | progress | obstacle) ;;
   *)
-    echo "ERROR: EVAL_METRIC/--metric must be timeout or progress" >&2
+    echo "ERROR: EVAL_METRIC/--metric must be timeout, progress, or obstacle" >&2
     exit 1
     ;;
 esac
 
 if [[ "${EVAL_METRIC}" == "timeout" ]]; then
   OUT_CSV="${STRESS_EVAL_CSV:-${HUMANOID_PARKOUR_ROOT}/results/metrics/timeout_cross_terrain_stress_eval.csv}"
-else
+elif [[ "${EVAL_METRIC}" == "progress" ]]; then
   OUT_CSV="${PROGRESS_STRESS_EVAL_CSV:-${HUMANOID_PARKOUR_ROOT}/results/metrics/traversal_progress_cross_terrain_stress_eval.csv}"
+else
+  OUT_CSV="${OBSTACLE_STRESS_EVAL_CSV:-${HUMANOID_PARKOUR_ROOT}/results/metrics/obstacle_crossing_cross_terrain_stress_eval.csv}"
 fi
 TERRAIN_NUM_ROWS="${TERRAIN_NUM_ROWS:-10}"
 TERRAIN_NUM_COLS="${TERRAIN_NUM_COLS:-10}"
@@ -60,14 +62,15 @@ STRONG_PASS_DISTANCE_M="${STRONG_PASS_DISTANCE_M:-6.0}"
 
 usage() {
   cat <<'EOF'
-Usage: bash scripts/eval_cross_terrain_stress.sh [--metric timeout|progress] [all|SOURCE [EVAL_ENV]]
+Usage: bash scripts/eval_cross_terrain_stress.sh [--metric timeout|progress|obstacle] [all|SOURCE [EVAL_ENV]]
 
   SOURCE/EVAL_ENV: rough | easy | medium | hard
-  Metric can also be set with EVAL_METRIC=timeout|progress.
+  Metric can also be set with EVAL_METRIC=timeout|progress|obstacle.
 
 Examples:
   bash scripts/eval_cross_terrain_stress.sh --metric timeout all
   bash scripts/eval_cross_terrain_stress.sh --metric progress all
+  bash scripts/eval_cross_terrain_stress.sh --metric obstacle all
   NUM_EPISODES=4 NUM_ENVS=4 bash scripts/eval_cross_terrain_stress.sh --metric progress hard easy
 
 Environment overrides:
@@ -83,6 +86,7 @@ Environment overrides:
   STRESS_COL=
   STRESS_EVAL_CSV=/path/to/timeout_cross_terrain_stress_eval.csv
   PROGRESS_STRESS_EVAL_CSV=/path/to/traversal_progress_cross_terrain_stress_eval.csv
+  OBSTACLE_STRESS_EVAL_CSV=/path/to/obstacle_crossing_cross_terrain_stress_eval.csv
   PASS_DISTANCE_M=4.0
   STRONG_PASS_DISTANCE_M=6.0
   CHECKPOINT_ROUGH=/path/to/model.pt
@@ -186,8 +190,10 @@ resolve_pairs() {
 run_name_for_pair() {
   if [[ "${EVAL_METRIC}" == "timeout" ]]; then
     echo "stress_${STRESS_MODE}_$1_to_$2"
-  else
+  elif [[ "${EVAL_METRIC}" == "progress" ]]; then
     echo "progress_stress_${STRESS_MODE}_$1_to_$2"
+  else
+    echo "obstacle_stress_${STRESS_MODE}_$1_to_$2"
   fi
 }
 
