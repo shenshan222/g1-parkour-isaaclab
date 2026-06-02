@@ -310,7 +310,7 @@ The custom parkour results show that the inherited rough G1 configuration is a v
 
 The hard result is the most informative failure boundary. Under the same 3000-iteration budget, hard has the lowest reward, highest fall rate, and weakest tracking quality among the parkour tiers. This suggests that the inherited velocity-tracking objective is insufficient for the hardest terrain distribution. Further improvement likely requires tuned command ranges, staged hard-terrain curriculum, or parkour-specific reward/termination terms such as forward progress, foothold safety, or obstacle-passing success.
 
-The main limitation is now the scope of the evaluation rather than the absence of evaluation. The fixed-checkpoint evaluator measures timeout, base-contact failure, episode length, and velocity-command tracking error. It does not yet measure semantic obstacle completion, such as explicitly passing a named gap or stair sequence. Therefore, the reported timeout rate should be read as locomotion survival over parkour terrain, not as a full obstacle-by-obstacle parkour score.
+The main limitation is now the semantic precision of the evaluation rather than the absence of evaluation. The fixed-checkpoint evaluator measures timeout, base-contact failure, episode length, and velocity-command tracking error. The added traversal-progress evaluation measures whether the robot remains upright while reaching fixed forward-distance thresholds. This is a useful forward-progress proxy, but it is not a terrain-aware obstacle-crossing test: it does not explicitly verify passing a named gap, stair sequence, or platform boundary. Therefore, the reported timeout and progress rates should be read as survival and traversal proxies, not as full obstacle-by-obstacle parkour scores.
 
 ---
 
@@ -323,4 +323,4 @@ This project built and trained a custom parkour locomotion setup for the Unitree
 - The custom parkour environment adds three terrain difficulty tiers and trains policies for easy, medium, and hard obstacle settings.
 - The parkour metrics show a clear difficulty gradient: fall rate and tracking error increase from easy to medium to hard, while reward decreases.
 
-The remaining work beyond this initial submission is to add semantic obstacle-passing metrics and complete formal reward/observation ablations.
+The remaining work beyond this initial submission is to add terrain-aware obstacle-crossing metrics and complete formal reward/observation ablations.

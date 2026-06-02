@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Run fixed-row 4x4 cross-terrain stress evaluation rollouts with timeout or semantic metrics.
+# Run fixed-row 4x4 cross-terrain stress evaluation rollouts with timeout or progress metrics.
 #
 # Usage:
-#   bash scripts/eval_cross_terrain_stress.sh [--metric timeout|semantic] [all|SOURCE [EVAL_ENV]]
+#   bash scripts/eval_cross_terrain_stress.sh [--metric timeout|progress] [all|SOURCE [EVAL_ENV]]
 #
 # SOURCE/EVAL_ENV: rough | easy | medium | hard
 set -euo pipefail
@@ -19,7 +19,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --metric)
       if [[ $# -lt 2 ]]; then
-        echo "ERROR: --metric requires timeout or semantic" >&2
+        echo "ERROR: --metric requires timeout or progress" >&2
         exit 1
       fi
       EVAL_METRIC="$2"
@@ -37,9 +37,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "${EVAL_METRIC}" in
-  timeout | semantic) ;;
+  timeout | progress) ;;
   *)
-    echo "ERROR: EVAL_METRIC/--metric must be timeout or semantic" >&2
+    echo "ERROR: EVAL_METRIC/--metric must be timeout or progress" >&2
     exit 1
     ;;
 esac
@@ -47,7 +47,7 @@ esac
 if [[ "${EVAL_METRIC}" == "timeout" ]]; then
   OUT_CSV="${STRESS_EVAL_CSV:-${HUMANOID_PARKOUR_ROOT}/results/metrics/timeout_cross_terrain_stress_eval.csv}"
 else
-  OUT_CSV="${SEMANTIC_STRESS_EVAL_CSV:-${HUMANOID_PARKOUR_ROOT}/results/metrics/semantic_obstacle_cross_terrain_stress_eval.csv}"
+  OUT_CSV="${PROGRESS_STRESS_EVAL_CSV:-${HUMANOID_PARKOUR_ROOT}/results/metrics/traversal_progress_cross_terrain_stress_eval.csv}"
 fi
 TERRAIN_NUM_ROWS="${TERRAIN_NUM_ROWS:-10}"
 TERRAIN_NUM_COLS="${TERRAIN_NUM_COLS:-10}"
@@ -60,15 +60,15 @@ STRONG_PASS_DISTANCE_M="${STRONG_PASS_DISTANCE_M:-6.0}"
 
 usage() {
   cat <<'EOF'
-Usage: bash scripts/eval_cross_terrain_stress.sh [--metric timeout|semantic] [all|SOURCE [EVAL_ENV]]
+Usage: bash scripts/eval_cross_terrain_stress.sh [--metric timeout|progress] [all|SOURCE [EVAL_ENV]]
 
   SOURCE/EVAL_ENV: rough | easy | medium | hard
-  Metric can also be set with EVAL_METRIC=timeout|semantic.
+  Metric can also be set with EVAL_METRIC=timeout|progress.
 
 Examples:
   bash scripts/eval_cross_terrain_stress.sh --metric timeout all
-  bash scripts/eval_cross_terrain_stress.sh --metric semantic all
-  NUM_EPISODES=4 NUM_ENVS=4 bash scripts/eval_cross_terrain_stress.sh --metric semantic hard easy
+  bash scripts/eval_cross_terrain_stress.sh --metric progress all
+  NUM_EPISODES=4 NUM_ENVS=4 bash scripts/eval_cross_terrain_stress.sh --metric progress hard easy
 
 Environment overrides:
   EVAL_METRIC=timeout
@@ -82,7 +82,7 @@ Environment overrides:
   STRESS_ROW=9
   STRESS_COL=
   STRESS_EVAL_CSV=/path/to/timeout_cross_terrain_stress_eval.csv
-  SEMANTIC_STRESS_EVAL_CSV=/path/to/semantic_obstacle_cross_terrain_stress_eval.csv
+  PROGRESS_STRESS_EVAL_CSV=/path/to/traversal_progress_cross_terrain_stress_eval.csv
   PASS_DISTANCE_M=4.0
   STRONG_PASS_DISTANCE_M=6.0
   CHECKPOINT_ROUGH=/path/to/model.pt
@@ -187,7 +187,7 @@ run_name_for_pair() {
   if [[ "${EVAL_METRIC}" == "timeout" ]]; then
     echo "stress_${STRESS_MODE}_$1_to_$2"
   else
-    echo "semantic_stress_${STRESS_MODE}_$1_to_$2"
+    echo "progress_stress_${STRESS_MODE}_$1_to_$2"
   fi
 }
 

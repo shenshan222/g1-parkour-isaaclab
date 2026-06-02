@@ -56,42 +56,42 @@ Output files:
 The default stress setting fixes `terrain_fixed_row=9` and leaves terrain columns unfixed, so the rollout covers all terrain types at the highest difficulty index within each preset. Row 9 is relative to each preset and should not be interpreted as the same absolute physical difficulty across rough/easy/medium/hard.
 
 
-## Semantic obstacle traversal evaluation
+## Traversal Progress Evaluation
 
-Semantic obstacle evaluation uses the same unified cross/stress scripts as timeout evaluation, with `--metric semantic`. It does not keep a separate diagonal result table.
+Traversal progress evaluation uses the same unified cross/stress scripts as timeout evaluation, with `--metric progress`. It does not keep a separate diagonal result table.
 
-Random 4x4 semantic cross-terrain evaluation uses `eval_cross_terrain.sh --metric semantic` and runs rough/easy/medium/hard checkpoints against rough/easy/medium/hard play environments.
+Random 4x4 traversal progress cross-terrain evaluation uses `eval_cross_terrain.sh --metric progress` and runs rough/easy/medium/hard checkpoints against rough/easy/medium/hard play environments.
 
 ```bash
-NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain.sh --metric semantic all
-python scripts/summarize_semantic_obstacle_eval.py \
-  --input_csv results/metrics/semantic_obstacle_cross_terrain_eval.csv \
+NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain.sh --metric progress all
+python scripts/summarize_traversal_progress_eval.py \
+  --input_csv results/metrics/traversal_progress_cross_terrain_eval.csv \
   --output_dir results/tables \
-  --output_prefix semantic_obstacle_cross_terrain
+  --output_prefix traversal_progress_cross_terrain
 ```
 
-Fixed-row semantic stress evaluation uses `eval_cross_terrain_stress.sh --metric semantic`. The default stress setting fixes `STRESS_ROW=9` and leaves terrain columns unfixed.
+Fixed-row traversal progress stress evaluation uses `eval_cross_terrain_stress.sh --metric progress`. The default stress setting fixes `STRESS_ROW=9` and leaves terrain columns unfixed.
 
 ```bash
-NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh --metric semantic all
-python scripts/summarize_semantic_obstacle_eval.py \
-  --input_csv results/metrics/semantic_obstacle_cross_terrain_stress_eval.csv \
+NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh --metric progress all
+python scripts/summarize_traversal_progress_eval.py \
+  --input_csv results/metrics/traversal_progress_cross_terrain_stress_eval.csv \
   --output_dir results/tables \
-  --output_prefix semantic_obstacle_cross_terrain_stress
+  --output_prefix traversal_progress_cross_terrain_stress
 ```
 
 Output files:
 
-- `results/metrics/semantic_obstacle_cross_terrain_eval.csv`
-- `results/metrics/semantic_obstacle_cross_terrain_stress_eval.csv`
-- `results/tables/semantic_obstacle_cross_terrain_summary.md`
-- `results/tables/semantic_obstacle_cross_terrain_stress_summary.md`
+- `results/metrics/traversal_progress_cross_terrain_eval.csv`
+- `results/metrics/traversal_progress_cross_terrain_stress_eval.csv`
+- `results/tables/traversal_progress_cross_terrain_summary.md`
+- `results/tables/traversal_progress_cross_terrain_stress_summary.md`
 
-Semantic pass is defined as no fall and `max_forward_distance_m >= 4.0`. Strong pass is defined as no fall and `max_forward_distance_m >= 6.0`. These metrics estimate obstacle traversal progress and complement timeout-based survival metrics; they should not replace the existing timeout tables.
+Progress pass is defined as no fall and `max_forward_distance_m >= 4.0`. Strong progress pass is defined as no fall and `max_forward_distance_m >= 6.0`. These metrics estimate obstacle traversal progress and complement timeout-based survival metrics; they should not replace the existing timeout tables.
 
 ## Result interpretation
 
-The current timeout definition is `timeout_without_base_contact`. It measures locomotion survival over the sampled terrain distribution, not semantic obstacle-by-obstacle completion.
+The current timeout definition is `timeout_without_base_contact`. It measures locomotion survival over the sampled terrain distribution, not terrain-aware obstacle-by-obstacle completion.
 
 Random cross-terrain evaluation measures average generalization across terrain samples. Fixed-row stress evaluation measures high-row robustness inside each terrain preset.
 

@@ -1,9 +1,9 @@
 """Evaluation helpers for course reporting."""
 
-from .semantic_obstacles import SemanticObstacleCriteria, evaluate_semantic_pass, terrain_type_by_column
+from .traversal_progress import TraversalProgressCriteria, evaluate_progress_pass, terrain_type_by_column
 
 __all__ = [
-    "SemanticObstacleCriteria",
-    "evaluate_semantic_pass",
+    "TraversalProgressCriteria",
+    "evaluate_progress_pass",
     "terrain_type_by_column",
 ]

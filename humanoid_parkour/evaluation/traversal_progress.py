@@ -1,7 +1,7 @@
 # Copyright (c) Humanoid Parkour Course Project.
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Helpers for semantic obstacle traversal evaluation."""
+"""Helpers for traversal progress evaluation."""
 
 from __future__ import annotations
 
@@ -18,8 +18,8 @@ class _TerrainGeneratorCfg(Protocol):
 
 
 @dataclass(frozen=True)
-class SemanticObstacleCriteria:
-    """Distance thresholds for semantic traversal success."""
+class TraversalProgressCriteria:
+    """Distance thresholds for forward progress success."""
 
     pass_distance_m: float = 4.0
     strong_pass_distance_m: float = 6.0
@@ -52,14 +52,14 @@ def terrain_type_by_column(terrain_cfg: _TerrainGeneratorCfg, num_cols: int) -> 
     return column_types
 
 
-def evaluate_semantic_pass(
+def evaluate_progress_pass(
     *,
     max_forward_distance_m: float,
     fell: bool,
-    criteria: SemanticObstacleCriteria | None = None,
+    criteria: TraversalProgressCriteria | None = None,
 ) -> tuple[bool, bool]:
-    """Return semantic and strong pass flags for one episode."""
-    c = criteria or SemanticObstacleCriteria()
-    semantic_pass = (not fell) and max_forward_distance_m >= c.pass_distance_m
-    strong_pass = (not fell) and max_forward_distance_m >= c.strong_pass_distance_m
-    return semantic_pass, strong_pass
+    """Return progress and strong progress pass flags for one episode."""
+    c = criteria or TraversalProgressCriteria()
+    progress_pass = (not fell) and max_forward_distance_m >= c.pass_distance_m
+    strong_progress_pass = (not fell) and max_forward_distance_m >= c.strong_pass_distance_m
+    return progress_pass, strong_progress_pass

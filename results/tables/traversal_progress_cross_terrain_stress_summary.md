@@ -1,4 +1,4 @@
-# Semantic pass rate
+# Progress pass rate
 
 | Checkpoint source | Eval rough | Eval easy | Eval medium | Eval hard |
 |---|---:|---:|---:|---:|
@@ -7,7 +7,7 @@
 | medium | 95.31% | 100.00% | 100.00% | 92.19% |
 | hard | 100.00% | 100.00% | 96.88% | 95.31% |
 
-# Strong pass rate
+# Strong progress pass rate
 
 | Checkpoint source | Eval rough | Eval easy | Eval medium | Eval hard |
 |---|---:|---:|---:|---:|
@@ -25,4 +25,4 @@
 | medium | 33.44 | 35.40 | 35.37 | 33.38 |
 | hard | 36.68 | 44.14 | 43.19 | 41.25 |
 
-Note: semantic pass is no fall with max forward distance >= 4 m; strong pass uses >= 6 m.
+Note: progress pass is no fall with max forward distance >= 4 m; strong pass uses >= 6 m.

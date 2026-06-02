@@ -2,7 +2,7 @@
 # Copyright (c) Humanoid Parkour Course Project.
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Evaluate trained G1 policies with timeout or semantic obstacle metrics."""
+"""Evaluate trained G1 policies with timeout or traversal progress metrics."""
 
 from __future__ import annotations
 
@@ -20,8 +20,8 @@ from isaaclab.app import AppLauncher  # noqa: E402
 
 import cli_args  # noqa: E402
 
-parser = argparse.ArgumentParser(description="Evaluate a trained G1 checkpoint with timeout or semantic metrics.")
-parser.add_argument("--metric", choices=("timeout", "semantic"), default="timeout", help="Evaluation metric family to write.")
+parser = argparse.ArgumentParser(description="Evaluate a trained G1 checkpoint with timeout or traversal progress metrics.")
+parser.add_argument("--metric", choices=("timeout", "progress"), default="timeout", help="Evaluation metric family to write.")
 parser.add_argument("--task", required=True, type=str, help="Isaac Lab Gym task id, usually a *-Play-v0 task.")
 parser.add_argument("--agent", type=str, default="rsl_rl_cfg_entry_point", help="RL agent config entry point.")
 parser.add_argument("--eval_name", required=True, type=str, help="Name written into the CSV row.")
@@ -36,8 +36,8 @@ parser.add_argument("--terrain_sampling", type=str, default="", help="Terrain sa
 parser.add_argument("--terrain_fixed_row", type=int, default=None, help="Fix all envs to one terrain difficulty row.")
 parser.add_argument("--terrain_fixed_col", type=int, default=None, help="Optionally fix all envs to one terrain type column.")
 parser.add_argument("--stress_mode", type=str, default="", help="Stress-test mode label written to CSV metadata.")
-parser.add_argument("--pass_distance_m", type=float, default=4.0, help="Minimum max forward distance for semantic pass.")
-parser.add_argument("--strong_pass_distance_m", type=float, default=6.0, help="Minimum max forward distance for strong semantic pass.")
+parser.add_argument("--pass_distance_m", type=float, default=4.0, help="Minimum max forward distance for progress pass.")
+parser.add_argument("--strong_pass_distance_m", type=float, default=6.0, help="Minimum max forward distance for strong progress pass.")
 parser.add_argument(
     "--max_steps",
     type=int,
@@ -73,7 +73,7 @@ from isaaclab_rl.rsl_rl import RslRlBaseRunnerCfg, RslRlVecEnvWrapper, handle_de
 from isaaclab_tasks.utils.hydra import hydra_task_config  # noqa: E402
 
 import humanoid_parkour.tasks.g1_parkour  # noqa: F401,E402
-from humanoid_parkour.evaluation.semantic_obstacles import SemanticObstacleCriteria, evaluate_semantic_pass  # noqa: E402
+from humanoid_parkour.evaluation.traversal_progress import TraversalProgressCriteria, evaluate_progress_pass  # noqa: E402
 
 TIMEOUT_FIELDNAMES = [
     "run_name",
@@ -98,10 +98,10 @@ TIMEOUT_FIELDNAMES = [
     "timeout_definition",
 ]
 
-SEMANTIC_FIELDNAMES = [
+PROGRESS_FIELDNAMES = [
     "run_name",
-    "semantic_pass_rate",
-    "strong_pass_rate",
+    "progress_pass_rate",
+    "strong_progress_pass_rate",
     "fall_rate",
     "timeout_rate",
     "mean_forward_distance_m",
@@ -124,8 +124,8 @@ SEMANTIC_FIELDNAMES = [
     "checkpoint",
     "task",
     "num_envs",
-    "semantic_definition",
-    "strong_definition",
+    "progress_definition",
+    "strong_progress_definition",
 ]
 
 
@@ -211,11 +211,11 @@ def _timeout_row(episodes: list[dict[str, object]], checkpoint: str, num_envs: i
     return row
 
 
-def _semantic_row(episodes: list[dict[str, object]], checkpoint: str, num_envs: int) -> dict[str, object]:
+def _progress_row(episodes: list[dict[str, object]], checkpoint: str, num_envs: int) -> dict[str, object]:
     row: dict[str, object] = {
         "run_name": args_cli.eval_name,
-        "semantic_pass_rate": f"{_rate(episodes, 'semantic_pass'):.4f}",
-        "strong_pass_rate": f"{_rate(episodes, 'strong_pass'):.4f}",
+        "progress_pass_rate": f"{_rate(episodes, 'progress_pass'):.4f}",
+        "strong_progress_pass_rate": f"{_rate(episodes, 'strong_progress_pass'):.4f}",
         "fall_rate": f"{_rate(episodes, 'fell'):.4f}",
         "timeout_rate": f"{_rate(episodes, 'timeout'):.4f}",
         "mean_forward_distance_m": f"{_mean(episodes, 'forward_distance_m'):.4f}",
@@ -226,8 +226,8 @@ def _semantic_row(episodes: list[dict[str, object]], checkpoint: str, num_envs: 
         "num_episodes": len(episodes),
         "pass_distance_m": f"{args_cli.pass_distance_m:.2f}",
         "strong_pass_distance_m": f"{args_cli.strong_pass_distance_m:.2f}",
-        "semantic_definition": f"no_fall_and_max_forward_distance_ge_{args_cli.pass_distance_m:g}m",
-        "strong_definition": f"no_fall_and_max_forward_distance_ge_{args_cli.strong_pass_distance_m:g}m",
+        "progress_definition": f"no_fall_and_max_forward_distance_ge_{args_cli.pass_distance_m:g}m",
+        "strong_progress_definition": f"no_fall_and_max_forward_distance_ge_{args_cli.strong_pass_distance_m:g}m",
     }
     row.update(_metadata(checkpoint, num_envs))
     return row
@@ -283,7 +283,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     episode_yaw_error = torch.zeros(num_envs, dtype=torch.float32, device=device)
     start_x = robot.data.root_pos_w[:, 0].detach().clone()
     max_forward = torch.zeros(num_envs, dtype=torch.float32, device=device)
-    criteria = SemanticObstacleCriteria(args_cli.pass_distance_m, args_cli.strong_pass_distance_m)
+    criteria = TraversalProgressCriteria(args_cli.pass_distance_m, args_cli.strong_pass_distance_m)
 
     completed: list[dict[str, object]] = []
     steps = 0
@@ -293,7 +293,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         robot = raw_env.scene["robot"]
         root_x = robot.data.root_pos_w[:, 0]
         forward = root_x - start_x
-        if args_cli.metric == "semantic":
+        if args_cli.metric == "progress":
             max_forward = torch.maximum(max_forward, forward)
 
         command = raw_env.command_manager.get_command("base_velocity")
@@ -325,10 +325,10 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
                     "yaw_error": float((episode_yaw_error[env_id] / length).item()),
                     "length": length,
                 }
-                if args_cli.metric == "semantic":
+                if args_cli.metric == "progress":
                     forward_distance = float(forward[env_id].detach().cpu().item())
                     max_forward_distance = float(max_forward[env_id].detach().cpu().item())
-                    semantic_pass, strong_pass = evaluate_semantic_pass(
+                    progress_pass, strong_progress_pass = evaluate_progress_pass(
                         max_forward_distance_m=max_forward_distance,
                         fell=fell,
                         criteria=criteria,
@@ -337,8 +337,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
                         {
                             "forward_distance_m": forward_distance,
                             "max_forward_distance_m": max_forward_distance,
-                            "semantic_pass": int(semantic_pass),
-                            "strong_pass": int(strong_pass),
+                            "progress_pass": int(progress_pass),
+                            "strong_progress_pass": int(strong_progress_pass),
                         }
                     )
                 completed.append(ep)
@@ -362,8 +362,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         row = _timeout_row(episodes, checkpoint, num_envs)
         fieldnames = TIMEOUT_FIELDNAMES
     else:
-        row = _semantic_row(episodes, checkpoint, num_envs)
-        fieldnames = SEMANTIC_FIELDNAMES
+        row = _progress_row(episodes, checkpoint, num_envs)
+        fieldnames = PROGRESS_FIELDNAMES
     _write_row(output_csv, row, fieldnames, append=args_cli.append)
 
     print("[INFO] Evaluation complete")
@@ -373,8 +373,8 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     if args_cli.metric == "timeout":
         print(f"[INFO] Timeout rate: {row['timeout_rate']}")
     else:
-        print(f"[INFO] Semantic pass rate: {row['semantic_pass_rate']}")
-        print(f"[INFO] Strong pass rate: {row['strong_pass_rate']}")
+        print(f"[INFO] Progress pass rate: {row['progress_pass_rate']}")
+        print(f"[INFO] Strong pass rate: {row['strong_progress_pass_rate']}")
     print(f"[INFO] Fall rate: {row['fall_rate']}")
     print(f"[INFO] Wrote: {output_csv}")
 
