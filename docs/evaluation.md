@@ -89,6 +89,16 @@ Output files:
 
 Progress pass is defined as no fall and `max_forward_distance_m >= 4.0`. Strong progress pass is defined as no fall and `max_forward_distance_m >= 6.0`. These metrics estimate obstacle traversal progress and complement timeout-based survival metrics; they should not replace the existing timeout tables.
 
+## Analysis tables
+
+Result-analysis tables used by the report are stored in:
+
+- `results/tables/generalization_analysis.md`
+- `results/tables/timeout_vs_progress_delta.md`
+- `results/tables/ablation_summary.md`
+
+`generalization_analysis.md` combines timeout and traversal-progress random/stress matrices into report-oriented observations. `timeout_vs_progress_delta.md` reports `timeout_rate - progress_pass_rate`; the current maximum delta is 1.56 percentage points, so traversal progress should be interpreted as a forward-distance sanity check rather than an explicit obstacle-boundary pass metric.
+
 ## Result interpretation
 
 The current timeout definition is `timeout_without_base_contact`. It measures locomotion survival over the sampled terrain distribution, not terrain-aware obstacle-by-obstacle completion.

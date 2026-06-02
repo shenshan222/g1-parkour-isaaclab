@@ -1,6 +1,6 @@
 # Ablation summary
 
-Current table combines training-summary metrics with fixed-checkpoint rollout timeout metrics from `results/metrics/parkour_timeout_eval.csv`.
+Current table combines training-summary metrics with fixed-checkpoint rollout timeout metrics from `results/metrics/parkour_timeout_eval.csv`. Cross-terrain and fixed-row stress evidence are summarized below to make the terrain-difficulty ablation reportable as both a training comparison and a generalization comparison.
 
 | Comparison | Run | Mean reward | Fall rate | XY tracking error | Mean episode length | Curriculum level | Notes |
 |------------|-----|-------------|-----------|-------------------|---------------------|------------------|-------|
@@ -17,7 +17,23 @@ Current table combines training-summary metrics with fixed-checkpoint rollout ti
 - Rough, easy, and medium all finish near curriculum level 5.8; hard is lower at 5.6389 under the same 3000-iteration budget.
 - The hard tier is the clearest stress test under a fair 3000-iteration budget: it has the lowest reward, highest fall rate, and weakest rollout timeout among the parkour tiers.
 
-## Pending formal ablations
+## Cross/stress evidence
+
+| Comparison | Random timeout | Stress timeout | Random progress | Stress progress | Interpretation |
+|------------|---------------:|---------------:|----------------:|----------------:|----------------|
+| rough -> hard | 29.69% | 31.25% | 29.69% | 31.25% | Rough locomotion does not transfer reliably to hard parkour obstacles |
+| easy -> hard | 0.00% | 0.00% | 0.00% | 0.00% | Easy terrain without gaps is insufficient for hard obstacle robustness |
+| medium -> hard | 87.50% | 92.19% | 87.50% | 92.19% | Medium is the minimum completed tier that transfers strongly to hard |
+| hard -> hard | 95.31% | 95.31% | 95.31% | 95.31% | Hard remains robust under both average and high-row evaluation |
+| hard -> rough/easy/medium | >= 96.88% | >= 96.88% | >= 96.88% | >= 96.88% | Hard training transfers downward to easier or parent terrains |
+
+## Reporting conclusion
+
+The completed formal ablation is the terrain-difficulty ablation. It shows a monotonic increase in training difficulty from easy to medium to hard, and cross-terrain evaluation adds stronger evidence that obstacle exposure matters: easy is stable but narrow, medium is the first tier with strong hard transfer, and hard is the best current source checkpoint for a generalist policy.
+
+Timeout and traversal-progress results are almost identical. The largest timeout-progress gap is 1.56 percentage points, so traversal progress should be reported as a forward-distance sanity check rather than as a separate obstacle-completion metric.
+
+## Pending ablations
 
 - Reward/observation ablations have not been run yet.
 - Fixed-checkpoint rollout evaluation has been run for easy/medium/hard with 64 episodes each.

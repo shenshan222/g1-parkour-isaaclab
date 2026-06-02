@@ -327,3 +327,13 @@
   - 保留 `eval_timeout_parkour.py` / `eval_timeout_parkour.sh`，因为 diagonal timeout self-evaluation 仍是正式链路的一部分。
 - 当前解释：traversal progress metrics 与 timeout metrics 在 cross/stress 结构上完全对齐，但衡量对象不同。timeout 衡量 survival-style locomotion robustness；progress pass 进一步要求策略在未摔倒前达到最小前进距离阈值。
 
+## 2026-06-02：完成结果分析与消融实验整理
+
+- 基于现有正式结果完成报告型分析整理，不新增训练或 Isaac Sim evaluation。
+- 新增 `results/tables/generalization_analysis.md`：统一解释 timeout random、timeout stress、traversal progress random、traversal progress stress 四组 4x4 结果。
+- 新增 `results/tables/timeout_vs_progress_delta.md`：计算 `timeout_rate - progress_pass_rate`，确认当前最大差值只有 `1.56%`，且仅出现在 easy-to-rough。
+- 扩展 `results/tables/ablation_summary.md` 和 `configs/ablations/terrain_ablation.md`：把 terrain difficulty ablation 从训练指标对比升级为训练指标、diagonal rollout、cross-terrain、stress、progress 共同支撑的结论。
+- 更新 `report/final_report.md`：新增 cross-terrain generalization 分析，明确 easy 稳定但泛化窄、medium 是最小 strong hard-transfer tier、hard 是当前最强 generalist source。
+- 更新 `docs/evaluation.md` 和 `README.md`：加入新增分析表入口。
+- 重要解释：traversal progress 仍是 forward-distance proxy，不是 terrain-aware obstacle-boundary crossing；真正逐障碍通过率仍属于未来工作。
+

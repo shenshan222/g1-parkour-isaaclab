@@ -27,6 +27,12 @@ Official run-level metrics are stored in:
 - `results/metrics/traversal_progress_cross_terrain_eval.csv`
 - `results/metrics/traversal_progress_cross_terrain_stress_eval.csv`
 
+Report-oriented analysis tables are stored in:
+
+- `results/tables/ablation_summary.md`
+- `results/tables/generalization_analysis.md`
+- `results/tables/timeout_vs_progress_delta.md`
+
 The current evaluation chain is: diagonal fixed-checkpoint timeout rollout evaluation, timeout 4x4 random cross-terrain evaluation, timeout 4x4 fixed-row stress evaluation, traversal progress 4x4 random cross-terrain evaluation, and traversal progress 4x4 fixed-row stress evaluation.
 
 Cross/stress rollouts share the unified evaluator `scripts/eval_parkour_rollout.py`; select timeout or traversal progress metrics through `--metric timeout|progress` in `eval_cross_terrain.sh` and `eval_cross_terrain_stress.sh`.
