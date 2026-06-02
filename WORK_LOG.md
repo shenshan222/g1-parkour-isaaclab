@@ -335,7 +335,7 @@
 - 扩展 `results/tables/ablation_summary.md` 和 `configs/ablations/terrain_ablation.md`：把 terrain difficulty ablation 从训练指标对比升级为训练指标、diagonal rollout、cross-terrain、stress、progress 共同支撑的结论。
 - 更新 `report/final_report.md`：新增 cross-terrain generalization 分析，明确 easy 稳定但泛化窄、medium 是最小 strong hard-transfer tier、hard 是当前最强 generalist source。
 - 更新 `docs/evaluation.md` 和 `README.md`：加入新增分析表入口。
-- 重要解释：traversal progress 仍是 forward-distance proxy，不是 terrain-aware obstacle-boundary crossing；真正逐障碍通过率仍属于未来工作。
+- 重要解释：traversal progress 仍是 forward-distance proxy，不是 terrain-aware obstacle-boundary crossing；当时还缺少逐障碍通过率，后续已通过 obstacle crossing stress evaluation 补上 base-level gap/stairs boundary metric。
 
 ## 2026-06-02：实现 Obstacle Crossing Evaluation
 
@@ -347,5 +347,22 @@
 - Gap boundary 使用中心平台远侧 gap 边界加 margin；stairs boundary 使用前向外侧 stair-field 边界。
 - CSV 输出字段包括 `obstacle_pass_rate`、`gap_pass_rate`、`stairs_pass_rate`、`fall_before_obstacle_rate`、`boundary_coverage`。
 - 解释边界：该指标是 base-level geometry-boundary obstacle crossing，不是 foot-contact-level verification；boxes/rough/slope 不纳入正式 obstacle pass aggregation。
-- 已完成静态检查和最小 smoke 检查，尚未运行正式 hard-focused obstacle evaluation。
+- 已完成静态检查和最小 smoke 检查；正式 4x4 obstacle stress evaluation 已在下一条日志中完成。
 
+
+
+## 2026-06-02：完成正式 Obstacle Crossing Stress Evaluation
+
+- 先运行 hard-to-hard smoke：`NUM_EPISODES=4 NUM_ENVS=4 SEED=42 bash scripts/eval_cross_terrain_stress.sh --metric obstacle hard hard`，并显式指定 rough/easy/medium/hard checkpoint，确认 hard 使用的是 `2026-05-26_20-22-02/model_2999.pt`，没有误用 smoke training 产生的 `model_0.pt`。
+- 随后运行正式 4x4 fixed-row stress obstacle evaluation：`NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh --metric obstacle all`。
+- 正式输出：
+  - `results/metrics/obstacle_crossing_cross_terrain_stress_eval.csv`
+  - `results/tables/obstacle_crossing_cross_terrain_stress_summary.md`
+- 完整性检查：CSV 共 16 行，rough/easy/medium/hard 的 source-env pair 全部覆盖；checkpoint 字段未出现 `model_0.pt`。
+- 关键结论：
+  - hard -> hard: obstacle/gap/stairs pass 全部为 `100.00%`；
+  - medium -> hard: obstacle pass `65.79%`，stairs pass `95.00%`，但 gap pass 只有 `33.33%`；
+  - easy -> hard: obstacle/gap/stairs pass 均为 `0.00%`；
+  - rough -> hard: aggregate obstacle pass `25.00%`，主要来自 stairs，gap pass 只有 `7.89%`。
+- 解释：timeout/progress 证明 medium 已有较强 hard survival transfer，但 obstacle crossing 进一步说明 medium 的短板集中在 hard gap crossing；hard checkpoint 则已经在官方 hard gap/stairs stress protocol 下形成明确优势。
+- 后续优先级调整：重写 MDP 的紧迫性下降；更有汇报价值的方向是 foothold safety、contact-aware crossing、OOD obstacle layouts，以及 AMP/SMP motion prior。

@@ -26,16 +26,18 @@ Official run-level metrics are stored in:
 - `results/metrics/timeout_cross_terrain_stress_eval.csv`
 - `results/metrics/traversal_progress_cross_terrain_eval.csv`
 - `results/metrics/traversal_progress_cross_terrain_stress_eval.csv`
+- `results/metrics/obstacle_crossing_cross_terrain_stress_eval.csv`
 
 Report-oriented analysis tables are stored in:
 
 - `results/tables/ablation_summary.md`
 - `results/tables/generalization_analysis.md`
 - `results/tables/timeout_vs_progress_delta.md`
+- `results/tables/obstacle_crossing_cross_terrain_stress_summary.md`
 
-The current completed result chain is: diagonal fixed-checkpoint timeout rollout evaluation, timeout 4x4 random cross-terrain evaluation, timeout 4x4 fixed-row stress evaluation, traversal progress 4x4 random cross-terrain evaluation, and traversal progress 4x4 fixed-row stress evaluation.
+The current completed result chain is: diagonal fixed-checkpoint timeout rollout evaluation, timeout/progress 4x4 random and fixed-row stress evaluation, and terrain-aware obstacle crossing fixed-row stress evaluation.
 
-Cross/stress rollouts share the unified evaluator `scripts/eval_parkour_rollout.py`; select timeout, traversal progress, or obstacle crossing metrics through `--metric timeout|progress|obstacle` in `eval_cross_terrain.sh` and `eval_cross_terrain_stress.sh`. Obstacle crossing measures base-level geometry-boundary success for gap/stairs terrain and is implemented, but its official CSV results are not yet part of the completed result set above.
+Cross/stress rollouts share the unified evaluator `scripts/eval_parkour_rollout.py`; select timeout, traversal progress, or obstacle crossing metrics through `--metric timeout|progress|obstacle` in `eval_cross_terrain.sh` and `eval_cross_terrain_stress.sh`. Obstacle crossing measures base-level geometry-boundary success for gap/stairs terrain. The official stress result shows hard-to-hard obstacle, gap, and stairs pass rates of 100.00%; medium-to-hard remains strong on stairs at 95.00% but drops to 33.33% on hard gaps, making hard gap crossing the main remaining terrain-specific bottleneck.
 
 ## Requirements
 

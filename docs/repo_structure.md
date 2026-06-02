@@ -30,10 +30,11 @@ g1-parkour-isaaclab/
 | `scripts/train_parkour.sh` | Train custom easy/medium/hard parkour tasks |
 | `scripts/play_parkour.sh` | Play or record selected rollout videos |
 | `scripts/eval_timeout_parkour.sh` | Diagonal fixed-checkpoint rollout evaluation |
-| `scripts/eval_cross_terrain.sh` | Unified 4x4 random cross-terrain evaluation, controlled by `--metric timeout|progress` |
-| `scripts/eval_cross_terrain_stress.sh` | Unified 4x4 fixed-row stress evaluation, controlled by `--metric timeout|progress` |
+| `scripts/eval_cross_terrain.sh` | Unified 4x4 random cross-terrain evaluation, controlled by `--metric timeout|progress|obstacle` |
+| `scripts/eval_cross_terrain_stress.sh` | Unified 4x4 fixed-row stress evaluation, controlled by `--metric timeout|progress|obstacle` |
 | `scripts/summarize_timeout_cross_terrain_eval.py` | Generate Markdown timeout cross/stress result tables |
 | `scripts/summarize_traversal_progress_eval.py` | Generate Markdown traversal progress cross/stress result tables |
+| `scripts/summarize_obstacle_crossing_eval.py` | Generate Markdown obstacle crossing cross/stress result tables |
 | `scripts/launch_tensorboard.sh` | Launch TensorBoard for external run logs |
 
 ## Result artifacts

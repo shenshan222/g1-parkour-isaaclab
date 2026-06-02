@@ -97,10 +97,13 @@ Random 4x4 obstacle crossing evaluation is supported, but the recommended offici
 
 ```bash
 NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh --metric obstacle all
-python scripts/summarize_obstacle_crossing_eval.py   --input_csv results/metrics/obstacle_crossing_cross_terrain_stress_eval.csv   --output_dir results/tables   --output_prefix obstacle_crossing_cross_terrain_stress
+python scripts/summarize_obstacle_crossing_eval.py \
+  --input_csv results/metrics/obstacle_crossing_cross_terrain_stress_eval.csv \
+  --output_dir results/tables \
+  --output_prefix obstacle_crossing_cross_terrain_stress
 ```
 
-Expected output files after running the official stress command:
+Official output files:
 
 - `results/metrics/obstacle_crossing_cross_terrain_stress_eval.csv`
 - `results/tables/obstacle_crossing_cross_terrain_stress_summary.md`
@@ -109,15 +112,22 @@ Obstacle pass is defined as no `base_contact` failure and successful base-level 
 
 The generated obstacle CSV contains `obstacle_pass_rate`, `gap_pass_rate`, `stairs_pass_rate`, `fall_before_obstacle_rate`, `boundary_coverage`, and `mean_boundary_x_m`.
 
+Official fixed-row stress findings:
+
+- Hard-to-hard reaches 100.00% obstacle pass, 100.00% gap pass, and 100.00% stairs pass.
+- Medium-to-hard reaches 65.79% obstacle pass: stairs remain strong at 95.00%, but hard gaps drop to 33.33%.
+- Easy-to-hard is 0.00%, confirming that easy terrain without gap exposure does not support hard obstacle transfer.
+
 ## Analysis tables
 
 Result-analysis tables used by the report are stored in:
 
 - `results/tables/generalization_analysis.md`
 - `results/tables/timeout_vs_progress_delta.md`
+- `results/tables/obstacle_crossing_cross_terrain_stress_summary.md`
 - `results/tables/ablation_summary.md`
 
-`generalization_analysis.md` combines timeout and traversal-progress random/stress matrices into report-oriented observations. `timeout_vs_progress_delta.md` reports `timeout_rate - progress_pass_rate`; the current maximum delta is 1.56 percentage points, so traversal progress should be interpreted as a forward-distance sanity check rather than an explicit obstacle-boundary pass metric.
+`generalization_analysis.md` combines timeout, traversal-progress, and obstacle-crossing stress matrices into report-oriented observations. `timeout_vs_progress_delta.md` reports `timeout_rate - progress_pass_rate`; the current maximum delta is 1.56 percentage points, so traversal progress should be interpreted as a forward-distance sanity check rather than an explicit obstacle-boundary pass metric.
 
 ## Result interpretation
 

@@ -19,7 +19,7 @@ This project aims to build a parkour-oriented locomotion environment for the Uni
 
 The underlying task family is manager-based locomotion with velocity tracking. The policy observes proprioceptive state and terrain-related signals, and learns to follow commanded base velocity while maintaining balance and avoiding failure termination. Within this overall project, flat and rough official G1 tasks are used as reference baselines: they validate the training pipeline, provide quantitative comparison points, and motivate why the parkour task should inherit from the rough locomotion configuration rather than from the flat configuration.
 
-This report is organized as a final-form project report. The parkour environment has now been implemented and trained across three difficulty tiers. Fixed-checkpoint rollout evaluation and parkour video capture have been added for the initial submission. Formal reward/observation ablations remain future work, while the completed terrain-difficulty ablation is analyzed through training metrics, diagonal rollout evaluation, cross-terrain evaluation, fixed-row stress evaluation, and traversal-progress sanity checks.
+This report is organized as a final-form project report. The parkour environment has now been implemented and trained across three difficulty tiers. Fixed-checkpoint rollout evaluation and parkour video capture have been added for the initial submission. Formal reward/observation ablations remain future work, while the completed terrain-difficulty ablation is analyzed through training metrics, diagonal rollout evaluation, cross-terrain evaluation, fixed-row stress evaluation, traversal-progress sanity checks, and terrain-aware obstacle crossing stress evaluation.
 
 ---
 
@@ -246,6 +246,7 @@ The completed formal ablation is a terrain-difficulty ablation over the environm
 | Flat vs. rough terrain | Official Isaac Lab baselines | Fall rate increases from 0.44% to 5.41%; XY tracking error increases from 0.2087 to 0.3407 m/s |
 | Easy vs. medium vs. hard parkour terrain | Custom parkour runs | Fall rate increases from 4.00% to 6.75% to 10.92%; XY tracking error increases from 0.3050 to 0.3590 to 0.4407 m/s |
 | Easy/medium/hard cross-terrain transfer | 4x4 random and fixed-row stress evaluation | Easy-to-hard remains 0.00%; medium-to-hard reaches 87.50% random timeout and 92.19% stress timeout; hard reaches at least 95.31% across all eval tiers |
+| Gap/stairs obstacle completion | Fixed-row obstacle crossing stress evaluation | Easy-to-hard obstacle pass is 0.00%; medium-to-hard reaches 65.79% obstacle pass but only 33.33% gap pass; hard-to-hard reaches 100.00% obstacle, gap, and stairs pass |
 
 This makes the ablation stronger than a training-curve comparison alone. Easy is stable but narrow, medium is the first completed tier that transfers well to hard, and hard is the best current source checkpoint for a future generalist policy. Reward/observation ablations have not been run yet, so no reward-term or observation-term causal claim is made.
 
@@ -287,7 +288,28 @@ The fixed-row stress matrix preserves this conclusion: easy-to-hard remains 0.00
 
 Traversal-progress evaluation uses the same cross/stress structure and defines progress pass as no fall plus `max_forward_distance_m >= 4.0`. It almost exactly matches timeout: the largest timeout-progress delta is 1.56 percentage points, appearing only for easy-to-rough. This means traversal progress is useful as a forward-distance sanity check, but the current result set is still dominated by base-contact failures rather than by long-lived non-progressing episodes.
 
-### 5.7 Result files and figures
+### 5.7 Obstacle crossing stress evaluation
+
+The obstacle crossing evaluation uses the unified rollout evaluator with `--metric obstacle`. Unlike traversal progress, it does not use a fixed forward-distance threshold. Instead, it checks whether the robot avoids `base_contact` failure and whether the base crosses the geometry boundary of supported obstacle types. Gap success requires crossing the far side of the gap plus a margin; stairs success requires reaching the forward outer stair-field boundary. Boxes, rough terrain, and slopes are recorded in coverage metadata but are not included in the official `obstacle_pass_rate`.
+
+Official command:
+
+```bash
+NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh --metric obstacle all
+```
+
+Key hard-evaluation results:
+
+| Checkpoint source | Eval hard obstacle pass | Eval hard gap pass | Eval hard stairs pass | Fall before obstacle |
+|-------------------|------------------------:|-------------------:|----------------------:|---------------------:|
+| rough | 25.00% | 7.89% | 90.00% | 64.58% |
+| easy | 0.00% | 0.00% | 0.00% | 89.66% |
+| medium | 65.79% | 33.33% | 95.00% | 31.58% |
+| hard | 100.00% | 100.00% | 100.00% | 0.00% |
+
+This result refines the timeout/progress conclusion. Medium-to-hard looks strong under survival-style metrics, but obstacle crossing reveals that medium still fails many hard-gap episodes. Its hard stairs pass rate is 95.00%, while its hard gap pass rate is only 33.33%. The hard checkpoint is therefore not merely surviving longer; under the official stress protocol it explicitly crosses the supported hard gap and stairs boundaries at 100.00%.
+
+### 5.8 Result files and figures
 
 Quantitative result files:
 
@@ -295,6 +317,7 @@ Quantitative result files:
 - `results/metrics/rough_baseline.csv`
 - `results/metrics/parkour_training_summary.csv`
 - `results/metrics/parkour_timeout_eval.csv`
+- `results/metrics/obstacle_crossing_cross_terrain_stress_eval.csv`
 - `results/tables/ablation_summary.md`
 - `results/tables/generalization_analysis.md`
 - `results/tables/timeout_vs_progress_delta.md`
@@ -302,6 +325,7 @@ Quantitative result files:
 - `results/tables/timeout_cross_terrain_stress_summary.md`
 - `results/tables/traversal_progress_cross_terrain_summary.md`
 - `results/tables/traversal_progress_cross_terrain_stress_summary.md`
+- `results/tables/obstacle_crossing_cross_terrain_stress_summary.md`
 
 Learning-curve figures:
 
@@ -310,7 +334,7 @@ Learning-curve figures:
 - Parkour: `results/figures/parkour_mean_reward.png`
 - Parkour episode length by tier: `results/figures/parkour_easy_episode_length.png`, `results/figures/parkour_medium_episode_length.png`, `results/figures/parkour_hard_episode_length.png`
 
-### 5.8 Videos
+### 5.9 Videos
 
 The rollout videos are stored under `report/assets/`.
 
@@ -332,9 +356,9 @@ The results establish a progression from flat locomotion to rough locomotion and
 
 The custom parkour results show that the inherited rough G1 configuration is a viable base for path-B parkour. Easy parkour converges reliably and keeps the fall rate below the rough baseline, despite using structured obstacles instead of generic rough terrain. Medium and hard then expose the expected degradation as gaps, obstacle heights, and platform constraints increase.
 
-The hard result is the most informative failure boundary. Under the same 3000-iteration budget, hard has the lowest reward, highest fall rate, and weakest tracking quality among the parkour tiers. This suggests that the inherited velocity-tracking objective is insufficient for the hardest terrain distribution. Further improvement likely requires tuned command ranges, staged hard-terrain curriculum, or parkour-specific reward/termination terms such as forward progress, foothold safety, or obstacle-passing success.
+The hard result has two sides. Training metrics still show that hard is the most difficult tier under the same 3000-iteration budget: it has the lowest reward, highest fall rate, and weakest tracking quality among the parkour tiers. However, the formal obstacle crossing stress evaluation shows that the hard checkpoint has learned the supported hard gap/stairs geometry well: hard-to-hard reaches 100.00% obstacle, gap, and stairs pass rates. The remaining weakness is therefore not that the current hard policy cannot solve the official hard obstacles, but that lower-difficulty policies, especially medium, do not fully transfer to hard gaps.
 
-The main limitation is now the semantic precision of the evaluation rather than the absence of evaluation. The fixed-checkpoint evaluator measures timeout, base-contact failure, episode length, and velocity-command tracking error. The added traversal-progress evaluation measures whether the robot remains upright while reaching fixed forward-distance thresholds. Because progress and timeout differ by at most 1.56 percentage points in the current official tables, progress currently acts mostly as a sanity check on forward traversal. It is not a terrain-aware obstacle-crossing test: it does not explicitly verify passing a named gap, stair sequence, or platform boundary. Therefore, the reported timeout and progress rates should be read as survival and traversal proxies, not as full obstacle-by-obstacle parkour scores.
+The main evaluation limitation is now the level of semantic precision. Timeout measures survival without base-contact failure. Traversal progress adds a forward-distance sanity check. Obstacle crossing adds base-level gap/stairs boundary success, which is enough to support obstacle-completion claims for the current terrain generator. It still does not verify foot-contact-level safety, precise foothold placement, or mesh-contact semantics. Further improvement should therefore focus on foothold safety, stricter contact-aware obstacle metrics, out-of-distribution obstacle layouts, and optional AMP/SMP-style motion priors rather than on another survival-only metric.
 
 ---
 
@@ -346,5 +370,7 @@ This project built and trained a custom parkour locomotion setup for the Unitree
 - The rough baseline confirmed that the pipeline remains effective with terrain sensing and curriculum.
 - The custom parkour environment adds three terrain difficulty tiers and trains policies for easy, medium, and hard obstacle settings.
 - The parkour metrics show a clear difficulty gradient: fall rate and tracking error increase from easy to medium to hard, while reward decreases.
+- Cross-terrain timeout/progress evaluation shows that easy is stable but narrow, medium is the first tier with strong survival transfer to hard, and hard is the strongest generalist source policy.
+- Terrain-aware obstacle crossing stress evaluation shows that hard-to-hard reaches 100.00% obstacle, gap, and stairs pass rates, while medium-to-hard remains limited by hard gaps at 33.33%.
 
-The remaining work beyond this initial submission is to add terrain-aware obstacle-crossing metrics and complete formal reward/observation ablations.
+The remaining work beyond this submission is to complete formal reward/observation ablations, add stricter foot-contact or foothold-safety metrics, test more out-of-distribution obstacle layouts, and optionally explore AMP/SMP motion-prior extensions.
