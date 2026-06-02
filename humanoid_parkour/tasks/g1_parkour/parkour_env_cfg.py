@@ -5,11 +5,13 @@
 
 from __future__ import annotations
 
+from isaaclab.managers import RewardTermCfg as RewTerm
 from isaaclab.terrains.terrain_generator_cfg import TerrainGeneratorCfg
 from isaaclab.utils import configclass
 
 from isaaclab_tasks.manager_based.locomotion.velocity.config.g1.rough_env_cfg import G1RoughEnvCfg
 
+from humanoid_parkour.tasks.g1_parkour.mdp_overrides import reward_parkour_progress
 from humanoid_parkour.terrains.parkour_terrain_cfg import (
     PARKOUR_EASY_TERRAINS_CFG,
     PARKOUR_MEDIUM_TERRAINS_CFG,
@@ -43,6 +45,15 @@ def _apply_play_settings(cfg: G1RoughEnvCfg, preset: TerrainGeneratorCfg) -> Non
     cfg.events.push_robot = None
 
 
+def _apply_parkour_mdp(cfg: G1RoughEnvCfg) -> None:
+    """Register parkour-specific reward terms (complementary to inherited rough MDP)."""
+    cfg.rewards["parkour_progress"] = RewTerm(
+        func=reward_parkour_progress,
+        weight=0.5,
+        params={},
+    )
+
+
 # -----------------------------------------------------------------------------
 # EASY
 # -----------------------------------------------------------------------------
@@ -53,6 +64,7 @@ class G1ParkourEasyEnvCfg(G1RoughEnvCfg):
     def __post_init__(self):
         super().__post_init__()
         self.scene.terrain.terrain_generator = _terrain_copy(PARKOUR_EASY_TERRAINS_CFG, curriculum=True)
+        _apply_parkour_mdp(self)
 
 
 @configclass
@@ -72,6 +84,7 @@ class G1ParkourMediumEnvCfg(G1RoughEnvCfg):
     def __post_init__(self):
         super().__post_init__()
         self.scene.terrain.terrain_generator = _terrain_copy(PARKOUR_MEDIUM_TERRAINS_CFG, curriculum=True)
+        _apply_parkour_mdp(self)
 
 
 @configclass
@@ -91,6 +104,7 @@ class G1ParkourHardEnvCfg(G1RoughEnvCfg):
     def __post_init__(self):
         super().__post_init__()
         self.scene.terrain.terrain_generator = _terrain_copy(PARKOUR_HARD_TERRAINS_CFG, curriculum=True)
+        _apply_parkour_mdp(self)
 
 
 @configclass

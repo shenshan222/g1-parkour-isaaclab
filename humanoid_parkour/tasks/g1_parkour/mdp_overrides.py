@@ -1,34 +1,42 @@
 # Copyright (c) Humanoid Parkour Course Project.
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Custom MDP terms: rewards, terminations, and success checks for parkour.
+"""Custom MDP terms: rewards and terminations for parkour.
 
-Keep experiment logic out of env cfg files; reference these callables from
-``parkour_env_cfg`` reward/termination config entries.
+Reference these callables from ``parkour_env_cfg`` reward/termination config entries.
 """
 
 from __future__ import annotations
 
-# from isaaclab.envs import ManagerBasedRLEnv
-# from isaaclab.managers import SceneEntityCfg
+import torch
 
 
-def reward_parkour_progress(env, asset_cfg=None) -> float:
-    """Reward forward progress along the commanded velocity direction."""
-    # TODO: implement using base linear velocity vs command
+def reward_parkour_progress(env) -> torch.Tensor:
+    """Reward forward base motion in the world x-axis.
+
+    Complementary to the inherited base-frame velocity-tracking reward: this
+    term directly rewards world-space forward progress regardless of robot
+    orientation, and saturates rather than penalising imperfect tracking.
+    """
+    root_vel_w = env.scene["robot"].data.root_lin_vel_w
+    return torch.clamp(root_vel_w[:, 0] * 0.5, min=0.0, max=0.75)
+
+
+def reward_foothold_safety(env) -> torch.Tensor:
+    """Optional: penalise unsafe footholds on gaps/edges (Hiking-in-the-Wild style)."""
     raise NotImplementedError
 
 
-def reward_foothold_safety(env, sensor_cfg=None) -> float:
-    """Optional: penalize unsafe footholds on gaps / edges (Hiking-in-the-Wild style)."""
-    raise NotImplementedError
+def termination_fall(env, minimum_height: float = 0.3) -> torch.Tensor:
+    """Terminate when the robot base drops below ``minimum_height``.
+
+    Provides an earlier termination signal for gap/edge falls than the
+    inherited ``base_contact`` termination alone.
+    """
+    root_height = env.scene["robot"].data.root_pos_w[:, 2]
+    return root_height < minimum_height
 
 
-def termination_fall(env, minimum_height: float = 0.3) -> bool:
-    """Terminate when the robot base drops below ``minimum_height``."""
-    raise NotImplementedError
-
-
-def check_obstacle_passed(env, checkpoint_x: float) -> bool:
+def check_obstacle_passed(env, checkpoint_x: float) -> torch.Tensor:
     """Return True if the robot passed a terrain checkpoint (for metrics)."""
     raise NotImplementedError

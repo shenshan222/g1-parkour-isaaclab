@@ -78,3 +78,15 @@ gym.register(
         "rsl_rl_cfg_entry_point": f"{_AGENTS}.rsl_rl_ppo_cfg:G1ParkourHardPPORunnerCfg",
     },
 )
+
+# Hard fine-tune — same env config (now includes parkour MDP terms),
+# but reduced learning rate for safe MDP-switch resume training.
+gym.register(
+    id="Isaac-Velocity-Parkour-G1-Hard-FineTune-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.parkour_env_cfg:G1ParkourHardEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{_AGENTS}.rsl_rl_ppo_cfg:G1ParkourHardFineTunePPORunnerCfg",
+    },
+)

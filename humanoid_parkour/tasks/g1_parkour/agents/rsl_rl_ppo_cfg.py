@@ -1,7 +1,7 @@
 # Copyright (c) Humanoid Parkour Course Project.
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""RSL-RL PPO configs — one experiment name per difficulty tier."""
+"""RSL-RL PPO configs — one experiment name per difficulty tier, plus fine-tune variants."""
 
 from __future__ import annotations
 
@@ -25,3 +25,27 @@ class G1ParkourMediumPPORunnerCfg(G1RoughPPORunnerCfg):
 @configclass
 class G1ParkourHardPPORunnerCfg(G1RoughPPORunnerCfg):
     experiment_name = "g1_parkour_hard"
+
+
+# -----------------------------------------------------------------------------
+# Fine-tune configs (reduced learning rate for MDP-switch resume training)
+# -----------------------------------------------------------------------------
+# Verify field paths on your Isaac Lab install:
+#   python -c "from isaaclab_tasks... import G1RoughPPORunnerCfg; print(G1RoughPPORunnerCfg.__annotations__)"
+
+
+@configclass
+class G1ParkourHardFineTunePPORunnerCfg(G1RoughPPORunnerCfg):
+    experiment_name = "g1_parkour_hard_finetune"
+
+    def __post_init__(self):
+        super().__post_init__()
+        # Halve learning rates to reduce the risk of catastrophic critic updates
+        # when the reward landscape changes.
+        if hasattr(self, "algorithm"):
+            alg = self.algorithm
+            if hasattr(alg, "learning_rate"):
+                alg.learning_rate = alg.learning_rate * 0.5
+            if hasattr(alg, "desired_kl"):
+                alg.desired_kl = getattr(alg, "desired_kl", 0.01) * 0.8
+
