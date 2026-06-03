@@ -10,7 +10,8 @@ import argparse
 import csv
 from pathlib import Path
 
-ORDER = ("rough", "easy", "medium", "hard")
+SOURCE_ORDER = ("rough", "easy", "medium", "hard", "rough_mdp", "hard_mdp")
+EVAL_ORDER = ("rough", "easy", "medium", "hard")
 SUMMARY_METRICS = (
     ("obstacle_pass_rate", "Obstacle pass rate", "percent_or_na"),
     ("gap_pass_rate", "Gap pass rate", "percent_or_na"),
@@ -40,7 +41,7 @@ def _read_rows(csv_path: Path) -> dict[tuple[str, str], dict[str, str]]:
     for row in rows:
         source = row.get("checkpoint_source", "")
         eval_env = row.get("eval_env", "")
-        if source in ORDER and eval_env in ORDER:
+        if source in SOURCE_ORDER and eval_env in EVAL_ORDER:
             matrix[(source, eval_env)] = row
     return matrix
 
@@ -52,9 +53,9 @@ def _format_table(title: str, metric_key: str, style: str, matrix: dict[tuple[st
         "| Checkpoint source | Eval rough | Eval easy | Eval medium | Eval hard |",
         "|---|---:|---:|---:|---:|",
     ]
-    for source in ORDER:
+    for source in SOURCE_ORDER:
         cells = []
-        for eval_env in ORDER:
+        for eval_env in EVAL_ORDER:
             row = matrix.get((source, eval_env))
             cells.append(_format_value(row.get(metric_key, ""), style) if row else "")
         lines.append(f"| {source} | " + " | ".join(cells) + " |")
