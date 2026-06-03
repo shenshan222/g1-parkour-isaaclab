@@ -50,11 +50,8 @@ Official run-level metrics are stored in:
 - `results/metrics/traversal_progress_cross_terrain_eval.csv`
 - `results/metrics/traversal_progress_cross_terrain_stress_eval.csv`
 - `results/metrics/obstacle_crossing_cross_terrain_stress_eval.csv`
-- `results/metrics/mdp_ablation_timeout_eval.csv`
-- `results/metrics/mdp_ablation_progress_eval.csv`
-- `results/metrics/mdp_ablation_timeout_stress_eval.csv`
-- `results/metrics/mdp_ablation_progress_stress_eval.csv`
-- `results/metrics/mdp_ablation_obstacle_stress_eval.csv`
+
+MDP ablation rows (rough_mdp and hard_mdp) are merged directly into the baseline cross/stress CSVs listed above via `scripts/merge_mdp_into_baseline.py`; there are no separate MDP-only metric files.
 
 Report-oriented analysis tables are stored in:
 
@@ -141,7 +138,6 @@ The official rough baseline and cross-eval source task use `Isaac-Velocity-Rough
 g1-parkour-isaaclab/
 ├── humanoid_parkour/     # Installable Python package: tasks, terrains, evaluation
 ├── scripts/              # Training / play / eval workflow scripts
-├── configs/              # Experiment and ablation design notes in Markdown
 ├── results/              # Commit-ready CSV files, figures, and tables
 ├── report/               # Course report and selected media assets
 └── docs/                 # Setup, training, and evaluation documentation

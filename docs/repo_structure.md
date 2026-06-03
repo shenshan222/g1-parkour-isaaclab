@@ -6,6 +6,8 @@ Aligned with the delivery framework plan: path B, Isaac Lab as an external proje
 g1-parkour-isaaclab/
 ├── README.md
 ├── README.zh.md
+├── WORK_LOG.md
+├── CLAUDE.md
 ├── pyproject.toml
 ├── .gitignore
 ├── humanoid_parkour_course_project.md
@@ -15,7 +17,6 @@ g1-parkour-isaaclab/
 │   ├── evaluation/            # Metrics and success criteria helpers
 │   └── utils/                 # Paths and task registry helpers
 ├── scripts/                   # Bash wrappers for train/play/eval workflows
-├── configs/                   # Experiment and ablation notes in Markdown
 ├── results/                   # Commit-ready CSV files, figures, and Markdown tables
 ├── report/                    # Course report and selected rollout videos
 └── docs/                      # Setup, training, and evaluation documentation
@@ -28,10 +29,14 @@ g1-parkour-isaaclab/
 | `scripts/train_flat_baseline.sh` | Train the official flat G1 baseline |
 | `scripts/train_rough_baseline.sh` | Train the official rough G1 baseline |
 | `scripts/train_parkour.sh` | Train custom easy/medium/hard parkour tasks |
+| `scripts/train_mdp_ablation.sh` | Train MDP ablation tasks (rough_mdp / hard_mdp) |
 | `scripts/play_parkour.sh` | Play or record selected rollout videos |
 | `scripts/eval_timeout_parkour.sh` | Diagonal fixed-checkpoint rollout evaluation |
 | `scripts/eval_cross_terrain.sh` | Unified 4x4 random cross-terrain evaluation, controlled by `--metric timeout|progress|obstacle` |
 | `scripts/eval_cross_terrain_stress.sh` | Unified 4x4 fixed-row stress evaluation, controlled by `--metric timeout|progress|obstacle` |
+| `scripts/eval_parkour_rollout.py` | Underlying unified evaluator used by cross/stress wrappers |
+| `scripts/merge_mdp_into_baseline.py` | Merge MDP ablation CSVs into the baseline cross/stress CSVs |
+| `scripts/generate_figures.py` | Generate MDP training curves and ablation comparison figures from TensorBoard event files |
 | `scripts/summarize_timeout_cross_terrain_eval.py` | Generate Markdown timeout cross/stress result tables |
 | `scripts/summarize_traversal_progress_eval.py` | Generate Markdown traversal progress cross/stress result tables |
 | `scripts/summarize_obstacle_crossing_eval.py` | Generate Markdown obstacle crossing cross/stress result tables |
@@ -43,7 +48,7 @@ g1-parkour-isaaclab/
 |---------------|----------|
 | Compact training/eval CSVs | `results/metrics/` |
 | Generated Markdown tables | `results/tables/` |
-| Report figures | `results/figures/` |
+| Training curves and ablation comparison figures | `results/figures/` |
 | Course report | `report/final_report.md` |
 | Selected rollout videos | `report/assets/` |
 

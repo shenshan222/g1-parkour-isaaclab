@@ -50,11 +50,8 @@ MDP 的 timeout/progress/obstacle cross 与 stress 评估均已完成。
 - `results/metrics/traversal_progress_cross_terrain_eval.csv`
 - `results/metrics/traversal_progress_cross_terrain_stress_eval.csv`
 - `results/metrics/obstacle_crossing_cross_terrain_stress_eval.csv`
-- `results/metrics/mdp_ablation_timeout_eval.csv`
-- `results/metrics/mdp_ablation_progress_eval.csv`
-- `results/metrics/mdp_ablation_timeout_stress_eval.csv`
-- `results/metrics/mdp_ablation_progress_stress_eval.csv`
-- `results/metrics/mdp_ablation_obstacle_stress_eval.csv`
+
+MDP 消融数据（rough_mdp 和 hard_mdp）已通过 `scripts/merge_mdp_into_baseline.py` 直接合并到上述 baseline cross/stress CSV 中，不保留独立的 MDP 指标文件。
 
 主评估链条是：固定 checkpoint diagonal rollout、4x4 random cross-terrain evaluation、4x4 fixed-row stress evaluation、MDP 消融对比分析。
 
@@ -127,7 +124,6 @@ export HUMANOID_PARKOUR_ROOT=/path/to/g1-parkour-isaaclab
 g1-parkour-isaaclab/
 ├── humanoid_parkour/     # 可安装 Python 包：任务、地形、评估
 ├── scripts/              # 训练 / play / eval 流程脚本
-├── configs/              # 实验与消融设计说明（Markdown）
 ├── results/              # 可提交的 CSV、图表、表格
 ├── report/               # 课程报告与精选媒体素材
 └── docs/                 # 安装、训练、评估文档

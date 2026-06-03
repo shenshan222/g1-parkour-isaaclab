@@ -438,3 +438,19 @@
 
 - 更新 README.md / README.zh.md：将 Hard-MDP 状态从 pending 更新为已完成，补充 checkpoint 路径、新增 metrics 文件、figures 目录和 `generate_figures.py` 脚本入口。
 - 更新 WORK_LOG.md：补录 Hard-MDP 训练、MDP 评估完成、CSV 合并、ablation summary 升级、figure generation 等条目。
+- 更新 CLAUDE.md：将 `check_obstacle_passed` 从 "planned for future work" 更新为 deprecated stub，说明 obstacle passing 已在评估端全覆盖、hard checkpoint 已达 100% obstacle pass，无需训练期 reward。
+
+## 2026-06-03：仓库清理
+
+- 删除 `outputs/`：106 个废弃 Hydra 配置日志目录（4.6 MB），均为训练启动时自动生成的配置快照，不含训练数据。
+- 删除 `configs/` 整个目录：包含 4 个早期实验记录文件（`flat_baseline.md`、`rough_baseline.md`、`parkour_curriculum.md`、`terrain_ablation.md`），其内容已全部被 WORK_LOG、CLAUDE.md 和 results/tables 覆盖。
+- 同步更新 README.md / README.zh.md 仓库结构图，移除 `configs/` 条目。
+
+## 2026-06-03：清理过时计划
+
+- 确认不再需要 multi-teacher distillation / generalist 策略：hard checkpoint 在所有 eval 环境（rough/easy/medium/hard）上 timeout ≥ 95.31%、obstacle pass ≥ 87.50%，已经是事实上的 generalist。蒸馏一个混合专家只会引入不必要的复杂度，且存在 capacity trade-off 导致性能下降的风险。
+- 确认 `check_obstacle_passed` stub 无实现价值：obstacle crossing evaluation 已在评估端完整运行（geometry-boundary gap/stairs pass/fail），hard checkpoint 在 hard 地形上 obstacle/gap/stairs pass 全部 100%。训练期加入 obstacle-passed reward/termination 从经验看（参考 `termination_fall`）更可能破坏训练稳定性。
+- 当前项目剩余可推进方向调整为：
+  1. 报告撰写与最终定稿；
+  2. ExtremeRandom OOD 压力测试（`Isaac-Velocity-Parkour-G1-ExtremeRandom-Play-v0` 已注册，可做系统性 4×4 evaluation）；
+  3. 仓库清理（废弃 smoke run 的 `model_0.pt`、统一 figure 命名等）。
