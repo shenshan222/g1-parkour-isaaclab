@@ -18,7 +18,7 @@ The official comparison uses a consistent checkpoint budget for the three parkou
 | Parkour medium | 3000 | `model_2999.pt` | Adds gaps and stronger obstacles |
 | Parkour hard | 3000 | `model_2999.pt` | Widest gaps and hardest platforms |
 | Rough-MDP ablation | 3000 | `model_2999.pt` | New MDP: progress + foothold safety, cross/stress eval complete |
-| Hard-MDP ablation | pending | - | Follow-up new-MDP experiment on hard terrain |
+| Hard-MDP ablation | 3000 | `model_2999.pt` | New MDP on hard parkour terrain, cross/stress eval complete |
 
 ### Current MDP Ablation Status
 
@@ -30,13 +30,16 @@ Relative to the inherited G1 rough locomotion MDP, the current ablation changes 
 - `foothold_safety`: a lightweight contact/state-based cost for foot sliding, low support points that approximate stepping into gaps or edges, and large contacting-foot height mismatch;
 - `termination_fall` was removed after an early run showed that it truncated exploration too aggressively.
 
-The completed Rough-MDP checkpoint is:
+The completed MDP checkpoints are:
 
 ```text
+# Rough-MDP
 /root/autodl-tmp/humanoid_parkour_runs/rough_mdp/logs/rsl_rl/g1_rough_mdp/2026-06-03_11-40-18/model_2999.pt
+# Hard-MDP
+/root/autodl-tmp/humanoid_parkour_runs/parkour_hard_mdp/logs/rsl_rl/g1_parkour_hard_mdp/2026-06-03_14-56-13/model_2999.pt
 ```
 
-Rough-MDP timeout/progress/stress evaluation is complete. Cross and stress outputs are intentionally separated so rerunning one protocol does not overwrite the other.
+MDP timeout/progress/obstacle cross and stress evaluation is complete. Cross and stress outputs are intentionally separated so rerunning one protocol does not overwrite the other.
 
 Official run-level metrics are stored in:
 
@@ -59,6 +62,16 @@ Report-oriented analysis tables are stored in:
 - `results/tables/generalization_analysis.md`
 - `results/tables/timeout_vs_progress_delta.md`
 - `results/tables/obstacle_crossing_cross_terrain_stress_summary.md`
+- `results/tables/timeout_cross_terrain_summary.md`
+- `results/tables/timeout_cross_terrain_stress_summary.md`
+- `results/tables/traversal_progress_cross_terrain_summary.md`
+- `results/tables/traversal_progress_cross_terrain_stress_summary.md`
+
+Training curve and ablation comparison figures are stored in `results/figures/`:
+
+- Individual MDP training curves: `rough_mdp_episode_length.png`, `rough_mdp_mean_reward.png`, `parkour_hard_mdp_episode_length.png`, `parkour_hard_mdp_mean_reward.png`
+- Ablation comparison: `mdp_ablation_rough_comparison.png`, `mdp_ablation_hard_comparison.png`
+- Generate or regenerate via `python scripts/generate_figures.py`
 
 The current completed result chain is: diagonal fixed-checkpoint timeout rollout evaluation, timeout/progress 4x4 random and fixed-row stress evaluation, and terrain-aware obstacle crossing fixed-row stress evaluation.
 

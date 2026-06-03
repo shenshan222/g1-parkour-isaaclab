@@ -395,5 +395,46 @@
 - 移除 `termination_fall` 后的 smoke test 通过：Termination Manager 只剩 `time_out` 与 `base_contact`，Reward Manager 包含 `parkour_progress` 与 `foothold_safety`。
 - Rough-MDP 正式 3000 iteration 训练已完成：
   - checkpoint：`/root/autodl-tmp/humanoid_parkour_runs/rough_mdp/logs/rsl_rl/g1_rough_mdp/2026-06-03_11-40-18/model_2999.pt`。
-- Rough-MDP 与 rough baseline 对齐的 timeout/progress/stress evaluation 正在运行。当前只应记录“评估进行中”，不要在评估 CSV 完成前写入最终结论。
+- Rough-MDP 与 rough baseline 对齐的 timeout/progress/stress evaluation 正在运行。当前只应记录”评估进行中”，不要在评估 CSV 完成前写入最终结论。
 - 注意：多个 smoke run 产生了 `model_0.pt`，正式评估必须使用 `model_2999.pt`；eval 脚本已优先选择 `model_2999.pt` 并跳过自动选择 `model_0.pt`。
+
+## 2026-06-03：完成 Hard-MDP 训练
+
+- Hard-MDP 正式 3000 iteration 训练已完成：
+  - checkpoint：`/root/autodl-tmp/humanoid_parkour_runs/parkour_hard_mdp/logs/rsl_rl/g1_parkour_hard_mdp/2026-06-03_14-56-13/model_2999.pt`。
+- Hard-MDP 继承 hard parkour terrain（`PARKOUR_HARD_TERRAINS_CFG`），使用 `G1ParkourMDPRewards`（upstream + `parkour_progress` + `foothold_safety`）。
+- 与 hard baseline 的关键区别：hard baseline 已包含 `parkour_progress`（通过 `G1ParkourRewards`），Hard-MDP 在此基础上额外增加 `foothold_safety`（weight −0.2）。
+
+## 2026-06-03：完成 MDP 消融正式评估
+
+- 对 rough_mdp 和 hard_mdp 两个 checkpoint（均为 `model_2999.pt`）完成完整的 timeout/progress/obstacle cross 与 stress evaluation。
+- 评估覆盖 4×4 矩阵（source × eval env），source 包括 rough_baseline、rough_mdp、hard_baseline、hard_mdp；eval env 包括 rough、easy、medium、hard。
+- 正式输出文件：
+  - `results/metrics/mdp_ablation_timeout_eval.csv`
+  - `results/metrics/mdp_ablation_progress_eval.csv`
+  - `results/metrics/mdp_ablation_timeout_stress_eval.csv`
+  - `results/metrics/mdp_ablation_progress_stress_eval.csv`
+  - `results/metrics/mdp_ablation_obstacle_stress_eval.csv`
+- 新增 `scripts/merge_mdp_into_baseline.py`，将 MDP 消融 CSV 按 metric 与 mode 合并到对应的 baseline 4×4 CSV，使 baseline 表中包含 `rough_mdp` 和 `hard_mdp` 行。
+- 更新 `results/tables/ablation_summary.md`：从训练指标对比升级为覆盖 timeout、progress、obstacle crossing、velocity tracking error、forward distance 的完整 MDP 消融分析。
+- Rough Baseline → Rough MDP 是最大效应：hard terrain timeout 从 29.69% → 70.31%（+40.62pp random），hard stress 从 31.25% → 70.31%（+39.06pp），fall rate 减半，medium gap pass 从 0% → 50%。
+- Hard Baseline → Hard MDP 展示精度-vs-速度权衡：timeout 已近天花板，主要收益在 velocity tracking error 降低（−0.4 到 −0.7 m/s）和 medium obstacle pass 达到 100%，但 forward distance 下降 8–10 m（`foothold_safety` 导致更保守的步态）。
+- Rough-MDP 在无 parkour terrain 暴露的情况下，hard timeout 已接近 medium baseline 水平，说明 reward shaping 能从非 parkour 地形提取可迁移的 locomotion skills。
+
+## 2026-06-03：生成 MDP 训练曲线与消融对比图
+
+- 新增 `scripts/generate_figures.py`，从 TensorBoard event files 读取数据并生成 6 张图。
+- 个体训练曲线（4 张）：
+  - `results/figures/rough_mdp_episode_length.png` — rough_mdp 训练 episode length 曲线
+  - `results/figures/rough_mdp_mean_reward.png` — rough_mdp 训练 mean reward 曲线
+  - `results/figures/parkour_hard_mdp_episode_length.png` — hard_mdp 训练 episode length 曲线
+  - `results/figures/parkour_hard_mdp_mean_reward.png` — hard_mdp 训练 mean reward 曲线
+- 消融对比图（2 张），每张 2×2 布局（baseline vs MDP × mean_reward vs episode_length）：
+  - `results/figures/mdp_ablation_rough_comparison.png` — Rough Baseline vs Rough MDP 并排对比
+  - `results/figures/mdp_ablation_hard_comparison.png` — Hard Baseline（仅前 3000 步，不含 resume） vs Hard MDP 并排对比
+- 数据来源：直接读取 `$HUMANOID_PARKOUR_RUNS_ROOT` 下的 TensorBoard event files，不依赖训练脚本或额外数据采集。
+
+## 2026-06-03：同步 README 与工作日志
+
+- 更新 README.md / README.zh.md：将 Hard-MDP 状态从 pending 更新为已完成，补充 checkpoint 路径、新增 metrics 文件、figures 目录和 `generate_figures.py` 脚本入口。
+- 更新 WORK_LOG.md：补录 Hard-MDP 训练、MDP 评估完成、CSV 合并、ablation summary 升级、figure generation 等条目。

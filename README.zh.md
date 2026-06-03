@@ -18,7 +18,7 @@ Isaac Lab 保持为**外部依赖**；本仓库只包含自定义任务包、流
 | Parkour medium | 3000 | `model_2999.pt` | 加入 gap 和更强障碍 |
 | Parkour hard | 3000 | `model_2999.pt` | 最大 gap 与最难平台约束 |
 | Rough-MDP ablation | 3000 | `model_2999.pt` | 新 MDP：progress + foothold safety，cross/stress 评估已完成 |
-| Hard-MDP ablation | 待训练 | - | 新 MDP 在 hard terrain 上的后续实验 |
+| Hard-MDP ablation | 3000 | `model_2999.pt` | 新 MDP 在 hard terrain 上的消融实验，cross/stress 评估已完成 |
 
 ### 当前 MDP 消融状态
 
@@ -30,13 +30,16 @@ Isaac Lab 保持为**外部依赖**；本仓库只包含自定义任务包、流
 - `foothold_safety`：轻量落脚安全 cost，基于已有 ankle contact 与 body state，惩罚接触滑移、疑似踩空/边缘支撑和双脚接触高度差过大；
 - `termination_fall` 已移除：早期实验中它会过早截断探索，导致 rough_mdp 在数百轮后 episode length 仍极低。
 
-Rough-MDP 正式训练已完成，checkpoint：
+Rough-MDP 和 Hard-MDP 正式训练均已完成，checkpoint：
 
 ```text
+# Rough-MDP
 /root/autodl-tmp/humanoid_parkour_runs/rough_mdp/logs/rsl_rl/g1_rough_mdp/2026-06-03_11-40-18/model_2999.pt
+# Hard-MDP
+/root/autodl-tmp/humanoid_parkour_runs/parkour_hard_mdp/logs/rsl_rl/g1_parkour_hard_mdp/2026-06-03_14-56-13/model_2999.pt
 ```
 
-Rough-MDP 的 timeout/progress/stress 评估已完成。cross 与 stress 默认写入不同 CSV，避免重跑其中一个 protocol 时覆盖另一个。
+MDP 的 timeout/progress/obstacle cross 与 stress 评估均已完成。
 
 正式指标文件：
 
@@ -53,7 +56,14 @@ Rough-MDP 的 timeout/progress/stress 评估已完成。cross 与 stress 默认�
 - `results/metrics/mdp_ablation_progress_stress_eval.csv`
 - `results/metrics/mdp_ablation_obstacle_stress_eval.csv`
 
-主评估链条是：固定 checkpoint diagonal rollout、4x4 random cross-terrain evaluation、4x4 fixed-row stress evaluation。
+主评估链条是：固定 checkpoint diagonal rollout、4x4 random cross-terrain evaluation、4x4 fixed-row stress evaluation、MDP 消融对比分析。
+
+分析表格与图表：
+- `results/tables/ablation_summary.md` — MDP 消融综合分析
+- `results/tables/generalization_analysis.md` — timeout + progress 交叉泛化分析
+- `results/tables/timeout_vs_progress_delta.md` — timeout 与 progress 差异分析
+- `results/tables/obstacle_crossing_cross_terrain_stress_summary.md` — obstacle crossing 压力评估
+- `results/figures/` — MDP 训练曲线与消融对比图（共 6 张），可通过 `python scripts/generate_figures.py` 重新生成
 
 ## 环境要求
 
