@@ -366,3 +366,34 @@
   - rough -> hard: aggregate obstacle pass `25.00%`，主要来自 stairs，gap pass 只有 `7.89%`。
 - 解释：timeout/progress 证明 medium 已有较强 hard survival transfer，但 obstacle crossing 进一步说明 medium 的短板集中在 hard gap crossing；hard checkpoint 则已经在官方 hard gap/stairs stress protocol 下形成明确优势。
 - 后续优先级调整：重写 MDP 的紧迫性下降；更有汇报价值的方向是 foothold safety、contact-aware crossing、OOD obstacle layouts，以及 AMP/SMP motion prior。
+
+## 2026-06-03：实现并修正 MDP 消融任务
+
+- 根据课程进阶一参考 Hiking in the Wild 的 foothold safety 思想，实现一版贴合本项目的轻量 MDP ablation。
+- 设计约束：
+  - 不新增独立 hiking task；
+  - 不改 obstacle / terrain generator 主体；
+  - 不引入 depth camera、foot volume points、AMP 或 motion reference；
+  - 复用现有 `rough_mdp` 与 `hard_mdp` 两个任务承载 MDP 改动。
+- 新增任务与评估入口：
+  - `Isaac-Velocity-Rough-G1-MDP-v0` / `Isaac-Velocity-Rough-G1-MDP-Play-v0`；
+  - `Isaac-Velocity-Parkour-G1-Hard-MDP-v0` / `Isaac-Velocity-Parkour-G1-Hard-MDP-Play-v0`；
+  - `Isaac-Velocity-Parkour-G1-ExtremeRandom-Play-v0` 作为 evaluation-only OOD stress terrain。
+- 新增 `scripts/train_mdp_ablation.sh`，支持 `rough`、`hard`、`all`，日志目录分别为：
+  - `/root/autodl-tmp/humanoid_parkour_runs/rough_mdp/logs/rsl_rl/g1_rough_mdp/`；
+  - `/root/autodl-tmp/humanoid_parkour_runs/parkour_hard_mdp/logs/rsl_rl/g1_parkour_hard_mdp/`。
+- 扩展 `scripts/eval_cross_terrain.sh` 与 `scripts/eval_cross_terrain_stress.sh`：
+  - `all` 默认仍只覆盖 rough/easy/medium/hard；
+  - 显式支持 source `rough_mdp` / `hard_mdp`；
+  - 显式支持 eval env `extreme`；
+  - MDP 结果写入 `results/metrics/mdp_ablation_*`，ExtremeRandom 结果按 metric 写入 `extreme_random_*`，避免污染原 official CSV。
+- 第一个 MDP 版本包含 `parkour_progress`、`foothold_safety` 和 `termination_fall`。
+- 早期 rough_mdp 训练到约 396 iteration 时 `mean_episode_length` 仍约 `5.02`，判断 `termination_fall` 过早截断探索，停止该 run，不作为正式结果。
+- 随后移除 `termination_fall`，保留 reward-only MDP：
+  - `parkour_progress`：奖励世界 x 方向前进；
+  - `foothold_safety`：基于已有 ankle contact 与 body state 的轻量落脚安全 cost，惩罚脚接触滑移、疑似踩空/边缘支撑、双脚接触高度差过大。
+- 移除 `termination_fall` 后的 smoke test 通过：Termination Manager 只剩 `time_out` 与 `base_contact`，Reward Manager 包含 `parkour_progress` 与 `foothold_safety`。
+- Rough-MDP 正式 3000 iteration 训练已完成：
+  - checkpoint：`/root/autodl-tmp/humanoid_parkour_runs/rough_mdp/logs/rsl_rl/g1_rough_mdp/2026-06-03_11-40-18/model_2999.pt`。
+- Rough-MDP 与 rough baseline 对齐的 timeout/progress/stress evaluation 正在运行。当前只应记录“评估进行中”，不要在评估 CSV 完成前写入最终结论。
+- 注意：多个 smoke run 产生了 `model_0.pt`，正式评估必须使用 `model_2999.pt`；eval 脚本已优先选择 `model_2999.pt` 并跳过自动选择 `model_0.pt`。

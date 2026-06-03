@@ -179,3 +179,64 @@ PARKOUR_HARD_TERRAINS_CFG = TerrainGeneratorCfg(
         ),
     },
 )
+
+# Extreme random: evaluation-only stress preset. Broadens the hard ranges
+# further to test policy generalization limits.
+PARKOUR_EXTREME_RANDOM_TERRAINS_CFG = TerrainGeneratorCfg(
+    size=(8.0, 8.0),
+    border_width=20.0,
+    num_rows=10,
+    num_cols=20,
+    horizontal_scale=0.1,
+    vertical_scale=0.005,
+    slope_threshold=0.75,
+    use_cache=False,
+    curriculum=False,
+    sub_terrains={
+        "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
+            proportion=0.15,
+            step_height_range=(0.15, 0.34),
+            step_width=0.26,
+            platform_width=2.2,
+            border_width=1.0,
+            holes=False,
+        ),
+        "pyramid_stairs_inv": terrain_gen.MeshInvertedPyramidStairsTerrainCfg(
+            proportion=0.15,
+            step_height_range=(0.15, 0.34),
+            step_width=0.26,
+            platform_width=2.2,
+            border_width=1.0,
+            holes=False,
+        ),
+        "boxes": terrain_gen.MeshRandomGridTerrainCfg(
+            proportion=0.15,
+            grid_width=0.45,
+            grid_height_range=(0.10, 0.30),
+            platform_width=1.6,
+        ),
+        "random_rough": terrain_gen.HfRandomUniformTerrainCfg(
+            proportion=0.10,
+            noise_range=(0.04, 0.16),
+            noise_step=0.02,
+            border_width=0.25,
+        ),
+        "gap": terrain_gen.MeshGapTerrainCfg(
+            proportion=0.25,
+            gap_width_range=(0.25, 0.60),
+            platform_width=1.3,
+        ),
+        "hf_pyramid_slope": terrain_gen.HfPyramidSlopedTerrainCfg(
+            proportion=0.10,
+            slope_range=(0.0, 0.55),
+            platform_width=1.6,
+            border_width=0.25,
+        ),
+        "hf_pyramid_slope_inv": terrain_gen.HfInvertedPyramidSlopedTerrainCfg(
+            proportion=0.10,
+            slope_range=(0.0, 0.55),
+            platform_width=1.6,
+            border_width=0.25,
+        ),
+    },
+)

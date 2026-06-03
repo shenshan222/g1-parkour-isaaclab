@@ -17,6 +17,26 @@ The official comparison uses a consistent checkpoint budget for the three parkou
 | Parkour easy | 3000 | `model_2999.pt` | Conservative structured obstacles |
 | Parkour medium | 3000 | `model_2999.pt` | Adds gaps and stronger obstacles |
 | Parkour hard | 3000 | `model_2999.pt` | Widest gaps and hardest platforms |
+| Rough-MDP ablation | 3000 | `model_2999.pt` | New MDP: progress + foothold safety, cross/stress eval complete |
+| Hard-MDP ablation | pending | - | Follow-up new-MDP experiment on hard terrain |
+
+### Current MDP Ablation Status
+
+The MDP ablation does not add a separate Hiking task. It reuses the two dedicated MDP tasks, `rough_mdp` and `hard_mdp`, and keeps the project aligned with the existing velocity-tracking parkour pipeline while borrowing the foothold-safety idea from Hiking in the Wild.
+
+Relative to the inherited G1 rough locomotion MDP, the current ablation changes rewards only; observations, actions, and terrain generation are unchanged:
+
+- `parkour_progress`: rewards world-x forward progress;
+- `foothold_safety`: a lightweight contact/state-based cost for foot sliding, low support points that approximate stepping into gaps or edges, and large contacting-foot height mismatch;
+- `termination_fall` was removed after an early run showed that it truncated exploration too aggressively.
+
+The completed Rough-MDP checkpoint is:
+
+```text
+/root/autodl-tmp/humanoid_parkour_runs/rough_mdp/logs/rsl_rl/g1_rough_mdp/2026-06-03_11-40-18/model_2999.pt
+```
+
+Rough-MDP timeout/progress/stress evaluation is complete. Cross and stress outputs are intentionally separated so rerunning one protocol does not overwrite the other.
 
 Official run-level metrics are stored in:
 
@@ -27,6 +47,11 @@ Official run-level metrics are stored in:
 - `results/metrics/traversal_progress_cross_terrain_eval.csv`
 - `results/metrics/traversal_progress_cross_terrain_stress_eval.csv`
 - `results/metrics/obstacle_crossing_cross_terrain_stress_eval.csv`
+- `results/metrics/mdp_ablation_timeout_eval.csv`
+- `results/metrics/mdp_ablation_progress_eval.csv`
+- `results/metrics/mdp_ablation_timeout_stress_eval.csv`
+- `results/metrics/mdp_ablation_progress_stress_eval.csv`
+- `results/metrics/mdp_ablation_obstacle_stress_eval.csv`
 
 Report-oriented analysis tables are stored in:
 
@@ -68,6 +93,7 @@ export HUMANOID_PARKOUR_ROOT=/path/to/g1-parkour-isaaclab
 | Train flat baseline | `bash scripts/train_flat_baseline.sh` |
 | Train rough baseline | `bash scripts/train_rough_baseline.sh` |
 | Train parkour tasks | `bash scripts/train_parkour.sh [all|easy|medium|hard]` |
+| Train MDP ablation tasks | `bash scripts/train_mdp_ablation.sh [all|rough|hard] -- --max_iterations=3000` |
 | Play / record videos | `bash scripts/play_parkour.sh [all|easy|medium|hard]` |
 | Diagonal rollout evaluation | `NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_timeout_parkour.sh all` |
 | Timeout random 4x4 cross-terrain evaluation | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain.sh --metric timeout all` |
@@ -90,6 +116,9 @@ Training logs and checkpoints are written to the large-disk run root by default;
 | Easy | `Isaac-Velocity-Parkour-G1-Easy-v0` | `Isaac-Velocity-Parkour-G1-Easy-Play-v0` |
 | Medium | `Isaac-Velocity-Parkour-G1-Medium-v0` | `Isaac-Velocity-Parkour-G1-Medium-Play-v0` |
 | Hard | `Isaac-Velocity-Parkour-G1-Hard-v0` | `Isaac-Velocity-Parkour-G1-Hard-Play-v0` |
+| Rough-MDP | `Isaac-Velocity-Rough-G1-MDP-v0` | `Isaac-Velocity-Rough-G1-MDP-Play-v0` |
+| Hard-MDP | `Isaac-Velocity-Parkour-G1-Hard-MDP-v0` | `Isaac-Velocity-Parkour-G1-Hard-MDP-Play-v0` |
+| ExtremeRandom | - | `Isaac-Velocity-Parkour-G1-ExtremeRandom-Play-v0` |
 
 The official rough baseline and cross-eval source task use `Isaac-Velocity-Rough-G1-v0` / `Isaac-Velocity-Rough-G1-Play-v0`.
 

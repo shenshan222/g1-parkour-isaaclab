@@ -17,6 +17,26 @@ Isaac Lab 保持为**外部依赖**；本仓库只包含自定义任务包、流
 | Parkour easy | 3000 | `model_2999.pt` | 保守结构化障碍 |
 | Parkour medium | 3000 | `model_2999.pt` | 加入 gap 和更强障碍 |
 | Parkour hard | 3000 | `model_2999.pt` | 最大 gap 与最难平台约束 |
+| Rough-MDP ablation | 3000 | `model_2999.pt` | 新 MDP：progress + foothold safety，cross/stress 评估已完成 |
+| Hard-MDP ablation | 待训练 | - | 新 MDP 在 hard terrain 上的后续实验 |
+
+### 当前 MDP 消融状态
+
+新增 MDP 消融不注册额外 hiking 任务，而是复用两个独立任务：`rough_mdp` 和 `hard_mdp`。设计目标是吸收 Hiking in the Wild 中 foothold safety 的思想，但保持本项目的 velocity-tracking parkour pipeline 简洁可控。
+
+当前 MDP 相对原 G1 rough locomotion 只改 reward，不改 observation、action 或 terrain：
+
+- `parkour_progress`：奖励世界 x 方向前进，用于强化穿越障碍的 forward progress；
+- `foothold_safety`：轻量落脚安全 cost，基于已有 ankle contact 与 body state，惩罚接触滑移、疑似踩空/边缘支撑和双脚接触高度差过大；
+- `termination_fall` 已移除：早期实验中它会过早截断探索，导致 rough_mdp 在数百轮后 episode length 仍极低。
+
+Rough-MDP 正式训练已完成，checkpoint：
+
+```text
+/root/autodl-tmp/humanoid_parkour_runs/rough_mdp/logs/rsl_rl/g1_rough_mdp/2026-06-03_11-40-18/model_2999.pt
+```
+
+Rough-MDP 的 timeout/progress/stress 评估已完成。cross 与 stress 默认写入不同 CSV，避免重跑其中一个 protocol 时覆盖另一个。
 
 正式指标文件：
 
@@ -24,6 +44,14 @@ Isaac Lab 保持为**外部依赖**；本仓库只包含自定义任务包、流
 - `results/metrics/parkour_timeout_eval.csv`
 - `results/metrics/timeout_cross_terrain_eval.csv`
 - `results/metrics/timeout_cross_terrain_stress_eval.csv`
+- `results/metrics/traversal_progress_cross_terrain_eval.csv`
+- `results/metrics/traversal_progress_cross_terrain_stress_eval.csv`
+- `results/metrics/obstacle_crossing_cross_terrain_stress_eval.csv`
+- `results/metrics/mdp_ablation_timeout_eval.csv`
+- `results/metrics/mdp_ablation_progress_eval.csv`
+- `results/metrics/mdp_ablation_timeout_stress_eval.csv`
+- `results/metrics/mdp_ablation_progress_stress_eval.csv`
+- `results/metrics/mdp_ablation_obstacle_stress_eval.csv`
 
 主评估链条是：固定 checkpoint diagonal rollout、4x4 random cross-terrain evaluation、4x4 fixed-row stress evaluation。
 
@@ -56,10 +84,15 @@ export HUMANOID_PARKOUR_ROOT=/path/to/g1-parkour-isaaclab
 | Flat baseline 训练 | `bash scripts/train_flat_baseline.sh` |
 | Rough baseline 训练 | `bash scripts/train_rough_baseline.sh` |
 | Parkour 训练 | `bash scripts/train_parkour.sh [all|easy|medium|hard]` |
+| MDP 消融训练 | `bash scripts/train_mdp_ablation.sh [all|rough|hard] -- --max_iterations=3000` |
 | Play / 录视频 | `bash scripts/play_parkour.sh [all|easy|medium|hard]` |
 | Diagonal rollout 评估 | `NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_timeout_parkour.sh all` |
-| Random 4x4 交叉评估 | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_timeout_cross_terrain.sh all` |
-| Fixed-row 4x4 压力测试 | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_timeout_cross_terrain_stress.sh all` |
+| Timeout random 4x4 交叉评估 | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain.sh --metric timeout all` |
+| Timeout fixed-row 4x4 压力测试 | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh --metric timeout all` |
+| Progress random 4x4 交叉评估 | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain.sh --metric progress all` |
+| Progress fixed-row 4x4 压力测试 | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh --metric progress all` |
+| Obstacle random 4x4 交叉评估 | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain.sh --metric obstacle all` |
+| Obstacle fixed-row 4x4 压力测试，推荐 | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh --metric obstacle all` |
 | 生成 cross/stress 表格 | `python scripts/summarize_timeout_cross_terrain_eval.py --input_csv <csv> --output_dir results/tables` |
 | TensorBoard | `bash scripts/launch_tensorboard.sh` |
 
@@ -72,6 +105,9 @@ export HUMANOID_PARKOUR_ROOT=/path/to/g1-parkour-isaaclab
 | Easy | `Isaac-Velocity-Parkour-G1-Easy-v0` | `Isaac-Velocity-Parkour-G1-Easy-Play-v0` |
 | Medium | `Isaac-Velocity-Parkour-G1-Medium-v0` | `Isaac-Velocity-Parkour-G1-Medium-Play-v0` |
 | Hard | `Isaac-Velocity-Parkour-G1-Hard-v0` | `Isaac-Velocity-Parkour-G1-Hard-Play-v0` |
+| Rough-MDP | `Isaac-Velocity-Rough-G1-MDP-v0` | `Isaac-Velocity-Rough-G1-MDP-Play-v0` |
+| Hard-MDP | `Isaac-Velocity-Parkour-G1-Hard-MDP-v0` | `Isaac-Velocity-Parkour-G1-Hard-MDP-Play-v0` |
+| ExtremeRandom | - | `Isaac-Velocity-Parkour-G1-ExtremeRandom-Play-v0` |
 
 官方 rough baseline 和 cross-eval source 任务使用 `Isaac-Velocity-Rough-G1-v0` / `Isaac-Velocity-Rough-G1-Play-v0`。
 

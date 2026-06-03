@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Run fixed-row 4x4 cross-terrain stress evaluation rollouts with timeout, progress, or obstacle metrics.
+# Run fixed-row cross-terrain stress evaluation rollouts with timeout, progress, or obstacle metrics.
 #
 # Usage:
 #   bash scripts/eval_cross_terrain_stress.sh [--metric timeout|progress|obstacle] [all|SOURCE [EVAL_ENV]]
 #
-# SOURCE/EVAL_ENV: rough | easy | medium | hard
+# SOURCE: rough | easy | medium | hard | rough_mdp | hard_mdp
+# EVAL_ENV: rough | easy | medium | hard | rough_mdp | hard_mdp | extreme
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -64,14 +65,19 @@ usage() {
   cat <<'EOF'
 Usage: bash scripts/eval_cross_terrain_stress.sh [--metric timeout|progress|obstacle] [all|SOURCE [EVAL_ENV]]
 
-  SOURCE/EVAL_ENV: rough | easy | medium | hard
+  SOURCE: rough | easy | medium | hard | rough_mdp | hard_mdp
+  EVAL_ENV: rough | easy | medium | hard | rough_mdp | hard_mdp | extreme
   Metric can also be set with EVAL_METRIC=timeout|progress|obstacle.
+
+  "all" selects rough/easy/medium/hard and excludes MDP/extreme.
 
 Examples:
   bash scripts/eval_cross_terrain_stress.sh --metric timeout all
   bash scripts/eval_cross_terrain_stress.sh --metric progress all
   bash scripts/eval_cross_terrain_stress.sh --metric obstacle all
   NUM_EPISODES=4 NUM_ENVS=4 bash scripts/eval_cross_terrain_stress.sh --metric progress hard easy
+  bash scripts/eval_cross_terrain_stress.sh --metric timeout rough_mdp all
+  bash scripts/eval_cross_terrain_stress.sh --metric obstacle hard_mdp extreme
 
 Environment overrides:
   EVAL_METRIC=timeout
@@ -84,37 +90,73 @@ Environment overrides:
   STRESS_MODE=max
   STRESS_ROW=9
   STRESS_COL=
-  STRESS_EVAL_CSV=/path/to/timeout_cross_terrain_stress_eval.csv
-  PROGRESS_STRESS_EVAL_CSV=/path/to/traversal_progress_cross_terrain_stress_eval.csv
-  OBSTACLE_STRESS_EVAL_CSV=/path/to/obstacle_crossing_cross_terrain_stress_eval.csv
-  PASS_DISTANCE_M=4.0
-  STRONG_PASS_DISTANCE_M=6.0
   CHECKPOINT_ROUGH=/path/to/model.pt
   CHECKPOINT_EASY=/path/to/model.pt
   CHECKPOINT_MEDIUM=/path/to/model.pt
   CHECKPOINT_HARD=/path/to/model.pt
+  CHECKPOINT_ROUGH_MDP=/path/to/model.pt
+  CHECKPOINT_HARD_MDP=/path/to/model.pt
+  MDP_ABLATION_TIMEOUT_CSV=/path/to/mdp_ablation_timeout_stress_eval.csv
+  MDP_ABLATION_PROGRESS_CSV=/path/to/mdp_ablation_progress_stress_eval.csv
+  MDP_ABLATION_OBSTACLE_CSV=/path/to/mdp_ablation_obstacle_stress_eval.csv
+  EXTREME_RANDOM_TIMEOUT_CSV=/path/to/extreme_random_timeout_stress_eval.csv
+  EXTREME_RANDOM_PROGRESS_CSV=/path/to/extreme_random_progress_stress_eval.csv
+  EXTREME_RANDOM_OBSTACLE_CSV=/path/to/extreme_random_obstacle_stress_eval.csv
 EOF
 }
 
-is_level() {
+is_source() {
   case "$1" in
-    rough | easy | medium | hard) return 0 ;;
+    rough | easy | medium | hard | rough_mdp | hard_mdp) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+is_eval_env() {
+  case "$1" in
+    rough | easy | medium | hard | rough_mdp | hard_mdp | extreme) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+is_mdp_source() {
+  case "$1" in
+    rough_mdp | hard_mdp) return 0 ;;
     *) return 1 ;;
   esac
 }
 
 find_latest_checkpoint() {
   local source="$1" search_root
+  local candidates=()
+  local selected=""
   case "${source}" in
     rough) search_root="${HUMANOID_PARKOUR_RUNS_ROOT}/rough_baseline/logs/rsl_rl/g1_rough" ;;
     easy | medium | hard) search_root="${HUMANOID_PARKOUR_RUNS_ROOT}/parkour_${source}/logs/rsl_rl/g1_parkour_${source}" ;;
+    rough_mdp) search_root="${HUMANOID_PARKOUR_RUNS_ROOT}/rough_mdp/logs/rsl_rl/g1_rough_mdp" ;;
+    hard_mdp) search_root="${HUMANOID_PARKOUR_RUNS_ROOT}/parkour_hard_mdp/logs/rsl_rl/g1_parkour_hard_mdp" ;;
     *) return 1 ;;
   esac
   if [[ ! -d "${search_root}" ]]; then
     return 1
   fi
-  # shellcheck disable=SC2012
-  ls -1 "${search_root}"/*/model_*.pt 2>/dev/null | sort -V | tail -n 1
+
+  shopt -s nullglob
+  candidates=("${search_root}"/*/model_2999.pt)
+  if [[ ${#candidates[@]} -gt 0 ]]; then
+    printf '%s\n' "${candidates[@]}" | sort -V | tail -n 1
+    return 0
+  fi
+
+  candidates=("${search_root}"/*/model_*.pt)
+  if [[ ${#candidates[@]} -gt 0 ]]; then
+    selected="$(printf '%s\n' "${candidates[@]}" | grep -Ev '/model_0\.pt$' | sort -V | tail -n 1 || true)"
+    if [[ -n "${selected}" ]]; then
+      echo "${selected}"
+      return 0
+    fi
+  fi
+  return 1
 }
 
 checkpoint_for_source() {
@@ -134,6 +176,9 @@ task_for_env() {
     easy) echo "Isaac-Velocity-Parkour-G1-Easy-Play-v0" ;;
     medium) echo "Isaac-Velocity-Parkour-G1-Medium-Play-v0" ;;
     hard) echo "Isaac-Velocity-Parkour-G1-Hard-Play-v0" ;;
+    rough_mdp) echo "Isaac-Velocity-Rough-G1-MDP-Play-v0" ;;
+    hard_mdp) echo "Isaac-Velocity-Parkour-G1-Hard-MDP-Play-v0" ;;
+    extreme) echo "Isaac-Velocity-Parkour-G1-ExtremeRandom-Play-v0" ;;
     *) return 1 ;;
   esac
 }
@@ -160,7 +205,7 @@ resolve_pairs() {
           exit 0
           ;;
         *)
-          if ! is_level "${SCRIPT_ARGS[0]}"; then
+          if ! is_source "${SCRIPT_ARGS[0]}"; then
             echo "ERROR: unknown source '${SCRIPT_ARGS[0]}'" >&2
             usage >&2
             exit 1
@@ -171,13 +216,21 @@ resolve_pairs() {
       esac
       ;;
     2)
-      if ! is_level "${SCRIPT_ARGS[0]}" || ! is_level "${SCRIPT_ARGS[1]}"; then
-        echo "ERROR: SOURCE and EVAL_ENV must be one of: ${ORDER[*]}" >&2
+      if ! is_source "${SCRIPT_ARGS[0]}"; then
+        echo "ERROR: unknown source '${SCRIPT_ARGS[0]}'" >&2
+        usage >&2
+        exit 1
+      fi
+      if [[ "${SCRIPT_ARGS[1]}" == "all" ]]; then
+        _envs=("${ORDER[@]}")
+      elif is_eval_env "${SCRIPT_ARGS[1]}"; then
+        _envs=("${SCRIPT_ARGS[1]}")
+      else
+        echo "ERROR: unknown eval env '${SCRIPT_ARGS[1]}'" >&2
         usage >&2
         exit 1
       fi
       _sources=("${SCRIPT_ARGS[0]}")
-      _envs=("${SCRIPT_ARGS[1]}")
       ;;
     *)
       echo "ERROR: expected zero, one, or two positional arguments" >&2
@@ -185,6 +238,30 @@ resolve_pairs() {
       exit 1
       ;;
   esac
+}
+
+_detect_output_csv() {
+  local e s
+  for e in "${EVAL_ENVS[@]}"; do
+    if [[ "${e}" == "extreme" ]]; then
+      case "${EVAL_METRIC}" in
+        timeout) OUT_CSV="${EXTREME_RANDOM_TIMEOUT_CSV:-${HUMANOID_PARKOUR_ROOT}/results/metrics/extreme_random_timeout_stress_eval.csv}" ;;
+        progress) OUT_CSV="${EXTREME_RANDOM_PROGRESS_CSV:-${HUMANOID_PARKOUR_ROOT}/results/metrics/extreme_random_progress_stress_eval.csv}" ;;
+        obstacle) OUT_CSV="${EXTREME_RANDOM_OBSTACLE_CSV:-${HUMANOID_PARKOUR_ROOT}/results/metrics/extreme_random_obstacle_stress_eval.csv}" ;;
+      esac
+      return 0
+    fi
+  done
+  for s in "${SOURCES[@]}"; do
+    if is_mdp_source "${s}"; then
+      case "${EVAL_METRIC}" in
+        timeout) OUT_CSV="${MDP_ABLATION_TIMEOUT_CSV:-${HUMANOID_PARKOUR_ROOT}/results/metrics/mdp_ablation_timeout_stress_eval.csv}" ;;
+        progress) OUT_CSV="${MDP_ABLATION_PROGRESS_CSV:-${HUMANOID_PARKOUR_ROOT}/results/metrics/mdp_ablation_progress_stress_eval.csv}" ;;
+        obstacle) OUT_CSV="${MDP_ABLATION_OBSTACLE_CSV:-${HUMANOID_PARKOUR_ROOT}/results/metrics/mdp_ablation_obstacle_stress_eval.csv}" ;;
+      esac
+      return 0
+    fi
+  done
 }
 
 run_name_for_pair() {
@@ -204,6 +281,7 @@ eval_one_pair() {
   ckpt="$(checkpoint_for_source "${source}" || true)"
   if [[ -z "${ckpt}" ]]; then
     echo "ERROR: no checkpoint found for source '${source}'" >&2
+    echo "Set CHECKPOINT_$(echo "${source}" | tr '[:lower:]' '[:upper:]') to evaluate an explicit checkpoint." >&2
     exit 1
   fi
   run_name="$(run_name_for_pair "${source}" "${eval_env}")"
@@ -255,6 +333,7 @@ eval_one_pair() {
 SOURCES=()
 EVAL_ENVS=()
 resolve_pairs SOURCES EVAL_ENVS
+_detect_output_csv
 
 activate_conda
 ensure_package_installed

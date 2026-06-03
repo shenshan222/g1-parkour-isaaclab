@@ -2,6 +2,8 @@
 
 from .rsl_rl_ppo_cfg import (  # noqa: F401
     G1ParkourEasyPPORunnerCfg,
-    G1ParkourMediumPPORunnerCfg,
+    G1ParkourHardMDPPPORunnerCfg,
     G1ParkourHardPPORunnerCfg,
+    G1ParkourMediumPPORunnerCfg,
+    G1RoughMDPPPORunnerCfg,
 )

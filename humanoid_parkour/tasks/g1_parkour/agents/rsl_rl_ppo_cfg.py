@@ -49,3 +49,21 @@ class G1ParkourHardFineTunePPORunnerCfg(G1RoughPPORunnerCfg):
             if hasattr(alg, "desired_kl"):
                 alg.desired_kl = getattr(alg, "desired_kl", 0.01) * 0.8
 
+
+# -----------------------------------------------------------------------------
+# MDP ablation configs
+# -----------------------------------------------------------------------------
+
+
+@configclass
+class G1RoughMDPPPORunnerCfg(G1RoughPPORunnerCfg):
+    """Rough locomotion with parkour MDP v1."""
+
+    experiment_name = "g1_rough_mdp"
+
+
+@configclass
+class G1ParkourHardMDPPPORunnerCfg(G1RoughPPORunnerCfg):
+    """Hard parkour terrain with parkour MDP v1."""
+
+    experiment_name = "g1_parkour_hard_mdp"
