@@ -454,3 +454,19 @@
   1. 报告撰写与最终定稿；
   2. ExtremeRandom OOD 压力测试（`Isaac-Velocity-Parkour-G1-ExtremeRandom-Play-v0` 已注册，可做系统性 4×4 evaluation）；
   3. 仓库清理（废弃 smoke run 的 `model_0.pt`、统一 figure 命名等）。
+
+
+## 2026-06-04：完成 ExtremeRandom OOD 压力测试
+
+- 根据 `/root/Eval.md` 的计划，完成 `hard` 与 `hard_mdp` 两个 checkpoint 在 `Isaac-Velocity-Parkour-G1-ExtremeRandom-Play-v0` 上的附加 OOD stress 对比。
+- 评估不并入正式 4×4 矩阵，只写入独立 CSV：
+  - `results/metrics/extreme_random_timeout_stress_eval.csv`
+  - `results/metrics/extreme_random_progress_stress_eval.csv`
+  - `results/metrics/extreme_random_obstacle_stress_eval.csv`
+- 协议保持与 fixed-row stress 一致：`NUM_EPISODES=64`、`NUM_ENVS=32`、`SEED=42`、`STRESS_ROW=9`、`STRESS_MODE=max`。
+- 主要结果：
+  - timeout/progress：hard 为 `90.62%`，hard_mdp 为 `95.31%`；
+  - obstacle pass：hard 为 `21.43%`，hard_mdp 为 `51.22%`；
+  - fall-before-obstacle：hard 为 `57.14%`，hard_mdp 为 `31.71%`。
+- 解释：Hard-MDP 在更极端的随机障碍分布下更稳，尤其 stairs crossing 明显提升；同时平均最大前进距离低于 hard，延续了 `foothold_safety` 带来的保守性与稳定性权衡。
+- 同步更新 README.md、README.zh.md、report/final_report.md 和 CLAUDE.md。暂未新增独立汇总表，保留三个原始 CSV 作为结果入口。

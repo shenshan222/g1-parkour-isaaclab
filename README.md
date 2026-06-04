@@ -50,6 +50,9 @@ Official run-level metrics are stored in:
 - `results/metrics/traversal_progress_cross_terrain_eval.csv`
 - `results/metrics/traversal_progress_cross_terrain_stress_eval.csv`
 - `results/metrics/obstacle_crossing_cross_terrain_stress_eval.csv`
+- `results/metrics/extreme_random_timeout_stress_eval.csv`
+- `results/metrics/extreme_random_progress_stress_eval.csv`
+- `results/metrics/extreme_random_obstacle_stress_eval.csv`
 
 MDP ablation rows (rough_mdp and hard_mdp) are merged directly into the baseline cross/stress CSVs listed above via `scripts/merge_mdp_into_baseline.py`; there are no separate MDP-only metric files.
 
@@ -70,9 +73,11 @@ Training curve and ablation comparison figures are stored in `results/figures/`:
 - Ablation comparison: `mdp_ablation_rough_comparison.png`, `mdp_ablation_hard_comparison.png`
 - These figures are committed as final report artifacts. The original TensorBoard event files remain outside Git under `$HUMANOID_PARKOUR_RUNS_ROOT`; the figure-generation helper script has been removed from this compact submission repo.
 
-The current completed result chain is: diagonal fixed-checkpoint timeout rollout evaluation, timeout/progress 4x4 random and fixed-row stress evaluation, and terrain-aware obstacle crossing fixed-row stress evaluation.
+The current completed result chain is: diagonal fixed-checkpoint timeout rollout evaluation, timeout/progress 4x4 random and fixed-row stress evaluation, terrain-aware obstacle crossing fixed-row stress evaluation, and an ExtremeRandom OOD stress comparison between `hard` and `hard_mdp`.
 
 Cross/stress rollouts share the unified evaluator `scripts/eval_parkour_rollout.py`; select timeout, traversal progress, or obstacle crossing metrics through `--metric timeout|progress|obstacle` in `eval_cross_terrain.sh` and `eval_cross_terrain_stress.sh`. Obstacle crossing measures base-level geometry-boundary success for gap/stairs terrain. The official stress result shows hard-to-hard obstacle, gap, and stairs pass rates of 100.00%; medium-to-hard remains strong on stairs at 95.00% but drops to 33.33% on hard gaps, making hard gap crossing the main remaining terrain-specific bottleneck.
+
+The ExtremeRandom OOD stress add-on keeps the official 4x4 matrices unchanged and evaluates only `hard` versus `hard_mdp` on `Isaac-Velocity-Parkour-G1-ExtremeRandom-Play-v0` with fixed stress row 9. In this harder setting, `hard_mdp` improves timeout/progress from 90.62% to 95.31% and obstacle pass from 21.43% to 51.22%, mainly through stronger stairs crossing and fewer falls before reaching the measured obstacle.
 
 ## Requirements
 

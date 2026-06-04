@@ -50,6 +50,9 @@ MDP 的 timeout/progress/obstacle cross 与 stress 评估均已完成。Cross �
 - `results/metrics/traversal_progress_cross_terrain_eval.csv`
 - `results/metrics/traversal_progress_cross_terrain_stress_eval.csv`
 - `results/metrics/obstacle_crossing_cross_terrain_stress_eval.csv`
+- `results/metrics/extreme_random_timeout_stress_eval.csv`
+- `results/metrics/extreme_random_progress_stress_eval.csv`
+- `results/metrics/extreme_random_obstacle_stress_eval.csv`
 
 MDP 消融数据（`rough_mdp` 和 `hard_mdp`）已通过 `scripts/merge_mdp_into_baseline.py` 直接合并到上述 baseline cross/stress CSV 中，不保留独立的 MDP-only 指标文件。
 
@@ -61,7 +64,9 @@ MDP 消融数据（`rough_mdp` 和 `hard_mdp`）已通过 `scripts/merge_mdp_int
 - `results/tables/obstacle_crossing_cross_terrain_stress_summary.md`：obstacle crossing 压力评估
 - `results/figures/`：MDP 训练曲线与消融对比图，作为最终报告产物提交。原始 TensorBoard event 文件保存在 `$HUMANOID_PARKOUR_RUNS_ROOT`，不纳入 Git；图表生成辅助脚本已从本精简提交仓库中删除。
 
-主评估链条包括：固定 checkpoint diagonal rollout、4x4 random cross-terrain evaluation、4x4 fixed-row stress evaluation、MDP 消融对比分析。
+主评估链条包括：固定 checkpoint diagonal rollout、4x4 random cross-terrain evaluation、4x4 fixed-row stress evaluation、MDP 消融对比分析，以及 `hard` 与 `hard_mdp` 在 ExtremeRandom OOD 地形上的附加压力测试。
+
+ExtremeRandom OOD 测试不并入正式 4x4 矩阵，只比较 `hard` 和 `hard_mdp` 在 `Isaac-Velocity-Parkour-G1-ExtremeRandom-Play-v0`、固定 stress row 9 上的表现。在该更难设置中，`hard_mdp` 将 timeout/progress 从 90.62% 提升到 95.31%，obstacle pass 从 21.43% 提升到 51.22%，主要来自更强的 stairs crossing 和更低的 obstacle 前摔倒率。
 
 ## 环境要求
 
