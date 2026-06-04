@@ -67,11 +67,14 @@ Report-oriented analysis tables are stored in:
 - `results/tables/traversal_progress_cross_terrain_summary.md`
 - `results/tables/traversal_progress_cross_terrain_stress_summary.md`
 
-Training curve and ablation comparison figures are stored in `results/figures/`:
+Report figures are stored in `results/figures/`:
 
 - Individual MDP training curves: `rough_mdp_episode_length.png`, `rough_mdp_mean_reward.png`, `parkour_hard_mdp_episode_length.png`, `parkour_hard_mdp_mean_reward.png`
 - Ablation comparison: `mdp_ablation_rough_comparison.png`, `mdp_ablation_hard_comparison.png`
-- These figures are committed as final report artifacts. The original TensorBoard event files remain outside Git under `$HUMANOID_PARKOUR_RUNS_ROOT`; the figure-generation helper script has been removed from this compact submission repo.
+- Stress heatmaps: `timeout_stress_heatmap.png`, `progress_stress_heatmap.png`, `obstacle_stress_heatmap.png`
+- ExtremeRandom OOD comparison: `extreme_hard_vs_hard_mdp_bar.png`
+- Regenerate the stress heatmaps and ExtremeRandom comparison via `python scripts/plot_stress_heatmaps.py`.
+- Training-curve figures are committed as final report artifacts. The original TensorBoard event files remain outside Git under `$HUMANOID_PARKOUR_RUNS_ROOT`.
 
 The current completed result chain is: diagonal fixed-checkpoint timeout rollout evaluation, timeout/progress 4x4 random and fixed-row stress evaluation, terrain-aware obstacle crossing fixed-row stress evaluation, and an ExtremeRandom OOD stress comparison between `hard` and `hard_mdp`.
 
@@ -120,6 +123,7 @@ export HUMANOID_PARKOUR_ROOT=/path/to/g1-parkour-isaaclab
 | Generate cross/stress tables | `python scripts/summarize_timeout_cross_terrain_eval.py --input_csv <csv> --output_dir results/tables` |
 | Generate progress cross/stress tables | `python scripts/summarize_traversal_progress_eval.py --input_csv <csv> --output_dir results/tables --output_prefix <prefix>` |
 | Generate obstacle cross/stress tables | `python scripts/summarize_obstacle_crossing_eval.py --input_csv <csv> --output_dir results/tables --output_prefix <prefix>` |
+| Generate stress result figures | `python scripts/plot_stress_heatmaps.py` |
 | TensorBoard | `bash scripts/launch_tensorboard.sh` |
 
 Training logs and checkpoints are written to the large-disk run root by default; see `humanoid_parkour/utils/paths.py`. They should **not** be committed to Git.

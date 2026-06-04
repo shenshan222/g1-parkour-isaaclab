@@ -62,7 +62,7 @@ MDP 消融数据（`rough_mdp` 和 `hard_mdp`）已通过 `scripts/merge_mdp_int
 - `results/tables/generalization_analysis.md`：timeout + progress 交叉泛化分析
 - `results/tables/timeout_vs_progress_delta.md`：timeout 与 progress 差异分析
 - `results/tables/obstacle_crossing_cross_terrain_stress_summary.md`：obstacle crossing 压力评估
-- `results/figures/`：MDP 训练曲线与消融对比图，作为最终报告产物提交。原始 TensorBoard event 文件保存在 `$HUMANOID_PARKOUR_RUNS_ROOT`，不纳入 Git；图表生成辅助脚本已从本精简提交仓库中删除。
+- `results/figures/`：报告图表，包括 MDP 训练曲线、消融对比图、stress 评估热力图和 ExtremeRandom OOD 对比图。其中 `timeout_stress_heatmap.png`、`progress_stress_heatmap.png`、`obstacle_stress_heatmap.png`、`extreme_hard_vs_hard_mdp_bar.png` 可通过 `python scripts/plot_stress_heatmaps.py` 重新生成；原始 TensorBoard event 文件保存在 `$HUMANOID_PARKOUR_RUNS_ROOT`，不纳入 Git。
 
 主评估链条包括：固定 checkpoint diagonal rollout、4x4 random cross-terrain evaluation、4x4 fixed-row stress evaluation、MDP 消融对比分析，以及 `hard` 与 `hard_mdp` 在 ExtremeRandom OOD 地形上的附加压力测试。
 
@@ -107,6 +107,7 @@ export HUMANOID_PARKOUR_ROOT=/path/to/g1-parkour-isaaclab
 | Obstacle random 4x4 交叉评估 | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain.sh --metric obstacle all` |
 | Obstacle fixed-row 4x4 压力测试（推荐） | `NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh --metric obstacle all` |
 | 生成 cross/stress 表格 | `python scripts/summarize_timeout_cross_terrain_eval.py --input_csv <csv> --output_dir results/tables` |
+| 生成 stress 结果图 | `python scripts/plot_stress_heatmaps.py` |
 | TensorBoard | `bash scripts/launch_tensorboard.sh` |
 
 训练日志与 checkpoint 默认写入大盘路径；参见 `humanoid_parkour/utils/paths.py`。这些文件**不应提交到 Git**。
