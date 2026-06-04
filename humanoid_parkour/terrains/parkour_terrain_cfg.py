@@ -1,7 +1,7 @@
-# Copyright (c) Humanoid Parkour Course Project.
+﻿# Copyright (c) Humanoid Parkour Course Project.
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Parkour terrain presets — EASY / MEDIUM / HARD (independent per tier)."""
+"""Parkour terrain presets: EASY / MEDIUM / HARD / EXTREME_RANDOM."""
 
 from __future__ import annotations
 

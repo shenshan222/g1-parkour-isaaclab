@@ -1,7 +1,7 @@
-# Copyright (c) Humanoid Parkour Course Project.
+﻿# Copyright (c) Humanoid Parkour Course Project.
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""G1 parkour env cfgs — one train + one play class per difficulty tier."""
+"""G1 parkour env cfgs: one train + one play class per difficulty tier."""
 
 from __future__ import annotations
 
