@@ -68,7 +68,7 @@ Training curve and ablation comparison figures are stored in `results/figures/`:
 
 - Individual MDP training curves: `rough_mdp_episode_length.png`, `rough_mdp_mean_reward.png`, `parkour_hard_mdp_episode_length.png`, `parkour_hard_mdp_mean_reward.png`
 - Ablation comparison: `mdp_ablation_rough_comparison.png`, `mdp_ablation_hard_comparison.png`
-- Generate or regenerate via `python scripts/generate_figures.py`
+- These figures are committed as final report artifacts. The original TensorBoard event files remain outside Git under `$HUMANOID_PARKOUR_RUNS_ROOT`; the figure-generation helper script has been removed from this compact submission repo.
 
 The current completed result chain is: diagonal fixed-checkpoint timeout rollout evaluation, timeout/progress 4x4 random and fixed-row stress evaluation, and terrain-aware obstacle crossing fixed-row stress evaluation.
 
@@ -136,11 +136,11 @@ The official rough baseline and cross-eval source task use `Isaac-Velocity-Rough
 
 ```text
 g1-parkour-isaaclab/
-├── humanoid_parkour/     # Installable Python package: tasks, terrains, evaluation
-├── scripts/              # Training / play / eval workflow scripts
-├── results/              # Commit-ready CSV files, figures, and tables
-├── report/               # Course report and selected media assets
-└── docs/                 # Setup, training, and evaluation documentation
+|-- humanoid_parkour/     # Installable Python package: tasks, terrains, evaluation
+|-- scripts/              # Training / play / eval workflow scripts
+|-- results/              # Commit-ready CSV files, figures, and tables
+|-- report/               # Course report and selected media assets
+`-- docs/                 # Setup, training, and evaluation documentation
 ```
 
 See [docs/repo_structure.md](docs/repo_structure.md) for details.

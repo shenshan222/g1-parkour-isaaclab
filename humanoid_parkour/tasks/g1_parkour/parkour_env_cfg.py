@@ -145,7 +145,7 @@ class G1ParkourHardEnvCfg_PLAY(G1ParkourHardEnvCfg):
 
 @configclass
 class G1ParkourRoughMDPEnvCfg(G1RoughEnvCfg):
-    """Rough locomotion with parkour MDP v1."""
+    """Rough locomotion with current reward-only parkour MDP ablation."""
 
     rewards: G1ParkourMDPRewards = G1ParkourMDPRewards()
 
@@ -167,7 +167,7 @@ class G1ParkourRoughMDPEnvCfg_PLAY(G1ParkourRoughMDPEnvCfg):
 
 @configclass
 class G1ParkourHardMDPEnvCfg(G1RoughEnvCfg):
-    """Hard parkour terrain with parkour MDP v1."""
+    """Hard parkour terrain with current reward-only parkour MDP ablation."""
 
     rewards: G1ParkourMDPRewards = G1ParkourMDPRewards()
 

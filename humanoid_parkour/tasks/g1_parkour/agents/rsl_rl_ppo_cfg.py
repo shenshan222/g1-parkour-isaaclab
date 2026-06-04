@@ -57,13 +57,13 @@ class G1ParkourHardFineTunePPORunnerCfg(G1RoughPPORunnerCfg):
 
 @configclass
 class G1RoughMDPPPORunnerCfg(G1RoughPPORunnerCfg):
-    """Rough locomotion with parkour MDP v1."""
+    """Rough locomotion with current reward-only parkour MDP ablation."""
 
     experiment_name = "g1_rough_mdp"
 
 
 @configclass
 class G1ParkourHardMDPPPORunnerCfg(G1RoughPPORunnerCfg):
-    """Hard parkour terrain with parkour MDP v1."""
+    """Hard parkour terrain with current reward-only parkour MDP ablation."""
 
     experiment_name = "g1_parkour_hard_mdp"

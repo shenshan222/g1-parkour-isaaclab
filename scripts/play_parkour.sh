@@ -144,7 +144,7 @@ play_one_level() {
   echo "Checkpoint: ${ckpt}"
 
   local play_args=(--task="${task}" --num_envs=16 --checkpoint="${ckpt}")
-  python "${ISAACLAB_PLAY}" "${play_args[@]}" "${PLAY_EXTRA[@]}"
+  run_isaaclab_entrypoint "${ISAACLAB_PLAY}" "${play_args[@]}" "${PLAY_EXTRA[@]}"
   echo "Task: ${task}"
 }
 
