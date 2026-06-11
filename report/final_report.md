@@ -1,477 +1,150 @@
-# Humanoid Parkour — Final Report
+# Humanoid Parkour Locomotion for Unitree G1 in Isaac Lab
 
-## Document map
+> Submission-ready draft synchronized with `latex/main.tex`. The LaTeX version is the primary formatted report because the course template is located in `latex/`.
 
-| Section | Content | Status |
-|---------|---------|--------|
-| §1 Introduction | Project goal and report scope | Complete |
-| §2 Method | Framework, formulation, protocol, baseline setup | Complete |
-| §3 Task and environment design | Parkour task and terrain implementation | Complete |
-| §4 Reference baselines | Flat and rough quantitative results | Complete |
-| §5 Parkour experiments | Training results, rollout evaluation, difficulty comparison, media | Complete for initial submission |
-| §5.10 MDP ablation | Reward shaping: parkour_progress + foothold_safety, rough/hard comparison | Complete |
-| §5.11 ExtremeRandom OOD stress | Hard vs Hard-MDP on evaluation-only extreme terrain | Complete |
-| §6 Discussion and conclusion | Interpretation and next steps | Updated with MDP and OOD findings |
+## Abstract
 
----
+Robust humanoid locomotion over structured obstacles remains difficult because a policy must simultaneously track commands, maintain balance, and handle terrain discontinuities such as stairs, boxes, slopes, and gaps. This project builds a custom parkour-oriented locomotion task for the Unitree G1 robot in Isaac Lab. Starting from the official manager-based G1 rough locomotion task, I implement three increasing parkour terrain tiers, train PPO policies with RSL-RL, and evaluate them with survival, traversal-progress, and geometry-aware obstacle-crossing metrics. The results show a clear terrain difficulty gradient: easy parkour is stable, medium parkour is the first tier that transfers strongly to hard terrain, and hard parkour is the strongest source policy, reaching at least 95.31% timeout rate across rough/easy/medium/hard evaluation environments and 100.00% hard gap/stairs obstacle pass rate under the fixed-row stress protocol. A reward-shaping MDP ablation further shows that adding world-frame progress and foothold-safety terms to rough-terrain training improves hard-terrain timeout rate from 29.69% to 70.31% without any parkour terrain exposure. On hard terrain, the foothold-safety term mainly improves tracking precision and medium-gap crossing at the cost of lower forward speed. An additional ExtremeRandom out-of-distribution stress test confirms the same safety-vs-speed pattern.
 
 ## 1. Introduction
 
-This project aims to build a parkour-oriented locomotion environment for the Unitree G1 robot in Isaac Lab. The target setting is not generic flat-ground walking, but robust velocity-tracking locomotion over structured obstacles such as stairs, platforms, gaps, and mixed uneven terrain. The final objective is a reproducible training and evaluation pipeline that supports custom parkour terrain design, parkour-specific curriculum learning, quantitative evaluation, and qualitative rollout analysis.
+Humanoid parkour locomotion requires more than stable flat-ground walking. A useful policy must move over uneven terrain, climb or descend structured height changes, cross gaps, and avoid falls while still obeying a locomotion command. The goal of this project is to build a reproducible parkour-oriented locomotion environment for the Unitree G1 robot in Isaac Lab.
 
-The underlying task family is manager-based locomotion with velocity tracking. The policy observes proprioceptive state and terrain-related signals, and learns to follow commanded base velocity while maintaining balance and avoiding failure termination. Within this overall project, flat and rough official G1 tasks are used as reference baselines: they validate the training pipeline, provide quantitative comparison points, and motivate why the parkour task should inherit from the rough locomotion configuration rather than from the flat configuration.
+The repository is a compact Isaac Lab task package rather than a fork of Isaac Lab. It stores task registration code, terrain configurations, reward extensions, scripts, result summaries, figures, and this report. Isaac Lab itself remains an external dependency. Large artifacts such as checkpoints, TensorBoard event files, and raw rollout videos are kept outside Git under a separate run-storage root.
 
-This report is organized as a final-form project report. The parkour environment has been implemented and trained across three difficulty tiers. The completed terrain-difficulty ablation is analyzed through training metrics, diagonal rollout evaluation, cross-terrain evaluation, fixed-row stress evaluation, traversal-progress sanity checks, and terrain-aware obstacle crossing stress evaluation. A reward-shaping MDP ablation (parkour_progress + foothold_safety) has also been completed on both rough and hard terrains, with full timeout/progress/obstacle cross and stress evaluation. Finally, an ExtremeRandom OOD stress add-on compares the hard and hard_mdp checkpoints on an evaluation-only terrain distribution without changing the official 4x4 matrices.
+Main contributions:
 
----
+- Three custom parkour terrain tiers for Unitree G1.
+- PPO training and play scripts for easy, medium, and hard parkour tasks.
+- A unified evaluation pipeline with timeout, traversal-progress, and obstacle-crossing metrics.
+- A terrain difficulty ablation across flat, rough, easy, medium, and hard settings.
+- A reward-shaping MDP ablation using world-frame progress and foothold-safety rewards.
+- An additional ExtremeRandom OOD stress evaluation for hard and hard-MDP policies.
 
 ## 2. Method
 
-### 2.1 Framework
+All custom environments inherit from Isaac Lab's manager-based G1 rough velocity-tracking configuration. This preserves the official G1 robot model, action space, proprioceptive observations, height scan, terrain curriculum machinery, and base-contact failure termination. The policy outputs joint-position targets, and PPO is implemented through RSL-RL.
 
-- Simulator and task framework: Isaac Sim + Isaac Lab
-- RL algorithm: PPO through RSL-RL
-- Robot platform: Unitree G1
-- Repository role: this repository stores task extensions, scripts, experiment records, figures, and report assets, while Isaac Lab remains an external dependency
+The parkour task replaces the official rough terrain generator with three custom presets:
 
-### 2.2 Common locomotion formulation
+| Tier | Terrain design |
+|------|----------------|
+| Easy | Conservative stairs, box grids, slopes, and rough terrain; no gaps |
+| Medium | Higher obstacles and the first gap terrain setting |
+| Hard | Taller obstacles, wider gaps, narrower platforms, and stronger terrain variation |
 
-All environments considered in this project belong to the same locomotion and velocity-tracking family.
+All parkour tiers add a world-frame forward progress reward:
 
-- The policy observes base linear and angular velocity, gravity projection, joint states, previous actions, and task commands.
-- The action space is joint position control for the whole robot.
-- The command generator samples target base velocity.
-- The reward combines command tracking quality, smoothness, posture regularization, and failure penalties.
+```text
+r_progress = clip(0.5 * v_x_world, 0, 0.75)
+```
 
-This shared structure is important because it makes the baselines and the future parkour task directly comparable.
+The MDP ablation further adds a foothold-safety cost using ankle contact forces and body-state signals. It penalizes foot sliding while in contact, support points that drop far below the base, and large height mismatch between simultaneously contacting feet.
 
-### 2.3 Experimental protocol
+## 3. Experimental Setup
 
-All completed runs were executed on the AutoDL Linux GPU environment with:
+Completed training runs:
 
-- GPU: NVIDIA GeForce RTX 3090
-- Conda environment: `/root/autodl-tmp/isaac_workspace/env_isaaclab`
-- Isaac Lab root: `/root/autodl-tmp/isaac_workspace/IsaacLab`
-- Run storage root: `/root/autodl-tmp/humanoid_parkour_runs`
+| Experiment | Task family | Iterations |
+|------------|-------------|-----------:|
+| Flat baseline | Official flat G1 | 1500 |
+| Rough baseline | Official rough G1 | 3000 |
+| Parkour easy | Custom easy parkour | 3000 |
+| Parkour medium | Custom medium parkour | 3000 |
+| Parkour hard | Custom hard parkour | 3000 |
+| Rough MDP | Rough terrain with MDP rewards | 3000 |
+| Hard MDP | Hard parkour with MDP rewards | 3000 |
 
-Training artifacts such as checkpoints, TensorBoard event files, and raw logs were kept on the data disk and were not committed to Git. Only compact summaries, figures, and report assets were kept in the repository.
+Evaluation uses three metric families:
 
-### 2.4 Reference baseline setup
+- `timeout`: episode reaches timeout without base-contact failure.
+- `progress`: no failure and maximum forward distance at least 4 m.
+- `obstacle`: no failure and base crosses the generated gap/stairs geometry boundary.
 
-To support the parkour task, two official Isaac Lab G1 baselines were trained first.
+## 4. Results
 
-#### Flat reference baseline
-
-- Task ID: `Isaac-Velocity-Flat-G1-v0`
-- PPO policy MLP: `[256, 128, 128]`
-- `num_envs = 4096`
-- `num_steps_per_env = 24`
-- `max_iterations = 1500`
-- `episode_length_s = 20.0`
-
-#### Rough reference baseline
-
-- Task ID: `Isaac-Velocity-Rough-G1-v0`
-- PPO policy MLP: `[512, 256, 128]`
-- `num_envs = 4096`
-- `num_steps_per_env = 24`
-- `max_iterations = 3000`
-- `episode_length_s = 20.0`
-- Terrain generator: `ROUGH_TERRAINS_CFG`
-- Additional sensing: `height_scanner` attached to `torso_link`
-- Curriculum: `terrain_levels_vel`
-
-These baselines are not the final contribution of the project. Their role is to validate the training pipeline and to provide a principled starting point for the parkour environment.
-
----
-
-## 3. Task and environment design
-
-### 3.1 Parkour task design
-
-The custom parkour task is implemented as a direct extension of Isaac Lab's G1 rough velocity-tracking environment. This choice keeps the same locomotion objective and PPO setup as the rough baseline while replacing the default rough terrain generator with structured obstacle terrains.
-
-Implemented task components:
-
-- **Task IDs**: `Isaac-Velocity-Parkour-G1-{Easy,Medium,Hard}-v0` for training and `...-Play-v0` for visualization.
-- **Base parent configuration**: all tiers inherit from `G1RoughEnvCfg`, preserving the rough-terrain observation structure and height scanner.
-- **Terrain design**: `PARKOUR_EASY_TERRAINS_CFG`, `PARKOUR_MEDIUM_TERRAINS_CFG`, and `PARKOUR_HARD_TERRAINS_CFG` replace the default rough terrain generator.
-- **Training strategy**: each tier enables terrain curriculum through the inherited rough locomotion curriculum mechanism.
-- **Play settings**: play environments reduce parallel environment count, disable observation corruption and push events, and use fixed forward velocity commands for clearer rollout inspection.
-
-Implementation files:
-
-- `humanoid_parkour/tasks/g1_parkour/parkour_env_cfg.py`
-- `humanoid_parkour/terrains/parkour_terrain_cfg.py`
-- `humanoid_parkour/tasks/g1_parkour/__init__.py`
-- `humanoid_parkour/tasks/g1_parkour/agents/rsl_rl_ppo_cfg.py`
-
-### 3.2 Terrain difficulty tiers
-
-The three parkour tiers are independent terrain-generator presets rather than a single terrain with one scalar knob. This makes each tier interpretable and supports direct difficulty comparison.
-
-| Tier | Main terrain elements | Difficulty design |
-|------|-----------------------|-------------------|
-| Easy | Pyramid stairs, inverted stairs, random box grid, random rough terrain, slopes | Conservative obstacle heights; no gap terrain |
-| Medium | Easy elements plus gap terrain | Higher stairs/boxes/roughness and controlled gaps |
-| Hard | Stairs, boxes, rough terrain, gaps, slopes | Taller obstacles, wider gaps, narrower platforms, stronger terrain stress |
-
-This design satisfies the path-B requirement of defining at least three increasing parkour terrain difficulty levels. It also gives a usable terrain-ablation axis: flat, rough, parkour easy, parkour medium, and parkour hard.
-
-### 3.3 Scope of reward and termination terms
-
-The parkour policies use the inherited G1 rough locomotion observation, termination, and curriculum terms, but the reward has been extended. All three parkour tier configs include `parkour_progress` (rewarding world-x forward velocity) via `G1ParkourRewards`. Two additional MDP variant tasks further add `foothold_safety` (a lightweight contact/state-based safety cost) and are evaluated as a reward-shaping ablation in §5.10.
-
----
-
-## 4. Reference baselines
-
-### 4.1 Flat baseline
-
-The flat baseline converged quickly and served as the first full pipeline validation.
-
-- Run ID: `2026-05-21_20-36-57`
-- Final checkpoint: `model_1499.pt`
-- Wall time: about 40 minutes
-- Final mean reward: `28.77`
-- Final mean episode length: `1000.0`
-- Timeout termination: `99.56%`
-- Base-contact termination: `0.44%`
-- Velocity tracking error in XY: `0.2087 m/s`
-- Velocity tracking error in yaw: `0.4566 rad/s`
-
-Interpretation:
-
-- The policy learned a stable locomotion behavior on flat terrain.
-- Almost all episodes ended by timeout rather than failure.
-- The learning curves show rapid improvement after the early unstable exploration stage and then a clear plateau.
-
-Relevant figures:
-
-- `results/figures/flat_mean_reward.png`
-- `results/figures/flat_episode_length.png`
-
-### 4.2 Rough baseline
-
-The rough baseline was intentionally harder and provides the more relevant parent configuration for the future parkour task.
-
-- Run ID: `2026-05-21_21-31-41`
-- Final checkpoint: `model_2999.pt`
-- Wall time: about 101 minutes
-- Final mean reward: `24.01`
-- Final mean episode length: `984.5`
-- Timeout termination: `94.62%`
-- Base-contact termination: `5.41%`
-- Velocity tracking error in XY: `0.3407 m/s`
-- Velocity tracking error in yaw: `0.7501 rad/s`
-- Final curriculum terrain level scalar: `5.7961`
-
-Interpretation:
-
-- The policy still converged, but the learned behavior is less stable than on flat terrain.
-- Rough terrain introduces more falls, lower return, and worse tracking quality.
-- Even so, the robot remains functional on most episodes, with the majority still ending by timeout.
-
-Relevant figures:
-
-- `results/figures/rough_mean_reward.png`
-- `results/figures/rough_episode_length.png`
-
-### 4.3 Baseline comparison
-
-The comparison confirms that rough terrain is a meaningful difficulty increase rather than a broken setup.
+### 4.1 Reference baselines
 
 | Metric | Flat | Rough |
-|------|------|------|
-| Max iterations | 1500 | 3000 |
+|------|------:|------:|
 | Mean reward | 28.77 | 24.01 |
 | Mean episode length | 1000.0 | 984.5 |
-| Failure rate (`base_contact`) | 0.44% | 5.41% |
 | Timeout rate | 99.56% | 94.62% |
-| XY velocity tracking reward | 0.9425 | 0.8441 |
-| XY velocity tracking error | 0.2087 m/s | 0.3407 m/s |
-| Curriculum terrain level scalar | N/A | 5.7961 |
+| Base-contact failure | 0.44% | 5.41% |
+| XY tracking error | 0.2087 m/s | 0.3407 m/s |
 
-The rough task is therefore the appropriate starting point for parkour. It preserves the same locomotion objective while adding uneven terrain, terrain sensing, and curriculum-based difficulty progression.
+The flat baseline verifies the pipeline. The rough baseline is harder but remains stable, confirming that the official rough task is a suitable parent for parkour.
 
----
-
-## 5. Parkour experiments and results
-
-### 5.1 Completed experiments
-
-The completed experiments now include the two reference baselines and three custom parkour training runs. The parkour runs use the custom easy, medium, and hard terrain generators described in Section 3.
-
-| Experiment | Task | Iterations | Final checkpoint |
-|------------|------|------------|------------------|
-| Parkour easy | `Isaac-Velocity-Parkour-G1-Easy-v0` | 3000 | `model_2999.pt` |
-| Parkour medium | `Isaac-Velocity-Parkour-G1-Medium-v0` | 3000 | `model_2999.pt` |
-| Parkour hard | `Isaac-Velocity-Parkour-G1-Hard-v0` | 3000 | `model_2999.pt` |
-
-All three parkour tiers are compared at the 3000-iteration checkpoint. The hard tier uses the initial hard run checkpoint so that the training budget is consistent with easy and medium.
-
-### 5.2 Parkour quantitative summary
-
-The following numbers are final TensorBoard training scalars, not fixed-seed rollout evaluation results. They are still useful for comparing convergence and relative terrain difficulty because they use the same task family and logging definitions as the flat and rough baselines.
+### 4.2 Parkour training
 
 | Metric | Easy | Medium | Hard |
-|--------|------|--------|------|
+|--------|-----:|-------:|-----:|
 | Mean reward | 30.70 | 20.98 | 11.34 |
 | Mean episode length | 983.2 | 988.1 | 941.7 |
 | Timeout rate | 96.00% | 93.25% | 89.08% |
-| Base-contact/fall rate | 4.00% | 6.75% | 10.92% |
-| XY velocity tracking reward | 0.8741 | 0.8539 | 0.7101 |
-| XY velocity tracking error | 0.3050 m/s | 0.3590 m/s | 0.4407 m/s |
-| Yaw tracking error | 0.6067 rad/s | 0.8445 rad/s | 1.0088 rad/s |
-| Curriculum terrain level scalar | 5.7907 | 5.8001 | 5.6389 |
+| Fall rate | 4.00% | 6.75% | 10.92% |
+| XY tracking error | 0.3050 | 0.3590 | 0.4407 |
+| Yaw tracking error | 0.6067 | 0.8445 | 1.0088 |
 
-The results show a clear difficulty gradient under the same 3000-iteration training budget. Easy parkour is trainable and even achieves a higher final mean reward than the rough baseline, while maintaining a lower fall rate than rough. Medium introduces gaps and higher obstacles; reward drops and tracking error increases. Hard is the strongest stress test: it has the lowest reward, the highest fall rate, and the weakest velocity-tracking quality among the three parkour tiers.
+The same 3000-iteration budget produces a clear difficulty gradient. Easy remains stable, medium introduces moderate degradation, and hard has the lowest reward, highest fall rate, and largest tracking error.
 
-### 5.3 Baseline-to-parkour comparison
+### 4.3 Cross-terrain generalization
 
-| Metric | Flat | Rough | Parkour easy | Parkour medium | Parkour hard |
-|--------|------|-------|--------------|----------------|--------------|
-| Mean reward | 28.77 | 24.01 | 30.70 | 20.98 | 11.34 |
-| Mean episode length | 1000.0 | 984.5 | 983.2 | 988.1 | 941.7 |
-| Fall rate | 0.44% | 5.41% | 4.00% | 6.75% | 10.92% |
-| XY tracking error | 0.2087 m/s | 0.3407 m/s | 0.3050 m/s | 0.3590 m/s | 0.4407 m/s |
-| Curriculum terrain level scalar | N/A | 5.7961 | 5.7907 | 5.8001 | 5.6389 |
-
-This comparison supports two observations. First, rough terrain is a useful parent configuration: parkour easy starts from the same rough-terrain sensing and curriculum structure and remains stable. Rough, easy, and medium all finish close to curriculum level 5.8, while hard reaches 5.6389 under the same 3000-iteration budget. These curriculum scalars are useful within each terrain preset but should not be interpreted as identical absolute physical difficulty across presets. Second, the custom hard terrain is meaningfully harder than the official rough baseline, especially in tracking error and reward.
-
-### 5.4 Terrain difficulty ablation
-
-The completed formal ablation is a terrain-difficulty ablation over the environment generator. The independent variables are obstacle type and terrain severity: easy removes gaps, medium adds gaps and increases obstacle height, and hard further widens gaps, increases obstacle height, and narrows safe platforms. Robot, base task family, PPO setup, and 3000-iteration checkpoint budget are kept fixed across the three parkour tiers.
-
-| Ablation axis | Evidence | Result |
-|---------------|----------|--------|
-| Flat vs. rough terrain | Official Isaac Lab baselines | Fall rate increases from 0.44% to 5.41%; XY tracking error increases from 0.2087 to 0.3407 m/s |
-| Easy vs. medium vs. hard parkour terrain | Custom parkour runs | Fall rate increases from 4.00% to 6.75% to 10.92%; XY tracking error increases from 0.3050 to 0.3590 to 0.4407 m/s |
-| Easy/medium/hard cross-terrain transfer | 4x4 random and fixed-row stress evaluation | Easy-to-hard remains 0.00%; medium-to-hard reaches 87.50% random timeout and 92.19% stress timeout; hard reaches at least 95.31% across all eval tiers |
-| Gap/stairs obstacle completion | Fixed-row obstacle crossing stress evaluation | Easy-to-hard obstacle pass is 0.00%; medium-to-hard reaches 65.79% obstacle pass but only 33.33% gap pass; hard-to-hard reaches 100.00% obstacle, gap, and stairs pass |
-
-This makes the ablation stronger than a training-curve comparison alone. Easy is stable but narrow, medium is the first completed tier that transfers well to hard, and hard is the best current source checkpoint for a future generalist policy. A complementary reward-shaping MDP ablation is presented in §5.10.
-
-### 5.5 Fixed-checkpoint rollout evaluation
-
-A separate rollout evaluator was implemented in `scripts/eval_timeout_parkour.py` and launched through `scripts/eval_timeout_parkour.sh`. Unlike the training-summary table, this evaluation loads fixed checkpoints and runs policy inference in the play environments. The timeout definition is conservative and directly tied to Isaac Lab termination signals: an episode is successful if it reaches timeout without `base_contact` termination.
-
-Evaluation command:
-
-```bash
-NUM_EPISODES=64 NUM_ENVS=32 bash scripts/eval_timeout_parkour.sh all
-```
-
-| Metric | Easy | Medium | Hard |
-|--------|------|--------|------|
-| Episodes | 64 | 64 | 64 |
-| Timeout rate | 100.00% | 95.31% | 87.50% |
-| Fall rate | 0.00% | 4.69% | 12.50% |
-| Mean episode length | 2000.00 | 1945.97 | 1809.97 |
-| Mean XY tracking error | 3.2648 | 3.4487 | 3.5624 |
-| Mean yaw tracking error | 0.3719 | 0.3106 | 0.4984 |
-
-The rollout evaluation confirms the same difficulty ordering as the training logs. Easy completes all sampled episodes. Medium introduces some base-contact failures, and hard has the highest failure rate. The tracking-error numbers are computed as direct pre-step velocity-command error during rollout, so their absolute scale should be interpreted as an evaluation statistic rather than as the same normalized TensorBoard command metric used during training.
-
-### 5.6 Cross-terrain generalization
-
-The 4x4 cross-terrain evaluation runs rough/easy/medium/hard checkpoints against rough/easy/medium/hard play environments. Random cross-terrain evaluation samples terrain type and difficulty inside a 10x10 grid. Fixed-row stress evaluation fixes row 9 inside each preset and leaves columns unfixed, so it tests the highest difficulty index while still covering terrain types. Row 9 is preset-relative and should not be treated as the same absolute physical difficulty across rough/easy/medium/hard.
-
-| Checkpoint source | Eval rough | Eval easy | Eval medium | Eval hard |
+| Source | Eval rough | Eval easy | Eval medium | Eval hard |
 |---|---:|---:|---:|---:|
-| rough | 95.31% | 98.44% | 68.75% | 29.69% |
-| easy | 90.62% | 100.00% | 50.00% | 0.00% |
-| medium | 98.44% | 98.44% | 95.31% | 87.50% |
-| hard | 100.00% | 100.00% | 96.88% | 95.31% |
+| Rough | 95.31% | 98.44% | 68.75% | 29.69% |
+| Easy | 90.62% | 100.00% | 50.00% | 0.00% |
+| Medium | 98.44% | 98.44% | 95.31% | 87.50% |
+| Hard | 100.00% | 100.00% | 96.88% | 95.31% |
 
-The random timeout matrix shows the main generalization pattern. Rough-to-hard is only 29.69%, and easy-to-hard is 0.00%, so rough locomotion and easy parkour do not cover the hard obstacle distribution. Medium-to-hard reaches 87.50%, indicating that adding gaps and stronger obstacles is the minimum completed terrain tier that transfers well to hard. Hard is the strongest source policy, with at least 95.31% timeout rate across all four evaluation environments.
+Rough locomotion and easy parkour do not transfer well to hard parkour. Medium is the first completed tier that transfers strongly to hard, while hard is the strongest source checkpoint.
 
-The fixed-row stress matrix preserves this conclusion: easy-to-hard remains 0.00%, medium-to-hard improves to 92.19%, and hard-to-hard remains 95.31%. Thus the cross/stress results support a clear terrain-difficulty ablation: obstacle exposure matters, and hard training is currently the best starting point for a generalist policy.
+### 4.4 Obstacle crossing
 
-Traversal-progress evaluation uses the same cross/stress structure and defines progress pass as no fall plus `max_forward_distance_m >= 4.0`. It almost exactly matches timeout: the largest timeout-progress delta is 1.56 percentage points, appearing only for easy-to-rough. This means traversal progress is useful as a forward-distance sanity check, but the current result set is still dominated by base-contact failures rather than by long-lived non-progressing episodes.
+| Source | Eval hard obstacle pass | Eval hard gap pass | Eval hard stairs pass | Fall before obstacle |
+|--------|------------------------:|-------------------:|----------------------:|---------------------:|
+| Rough | 25.00% | 7.89% | 90.00% | 64.58% |
+| Easy | 0.00% | 0.00% | 0.00% | 89.66% |
+| Medium | 65.79% | 33.33% | 95.00% | 31.58% |
+| Hard | 100.00% | 100.00% | 100.00% | 0.00% |
 
-### 5.7 Obstacle crossing stress evaluation
+Medium-to-hard looks strong under timeout, but hard-gap crossing remains difficult. The hard checkpoint explicitly crosses all supported hard gap and stairs boundaries under the official stress protocol.
 
-The obstacle crossing evaluation uses the unified rollout evaluator with `--metric obstacle`. Unlike traversal progress, it does not use a fixed forward-distance threshold. Instead, it checks whether the robot avoids `base_contact` failure and whether the base crosses the geometry boundary of supported obstacle types. Gap success requires crossing the far side of the gap plus a margin; stairs success requires reaching the forward outer stair-field boundary. Boxes, rough terrain, and slopes are recorded in coverage metadata but are not included in the official `obstacle_pass_rate`.
+## 5. MDP Ablation
 
-Official command:
-
-```bash
-NUM_EPISODES=64 NUM_ENVS=32 SEED=42 bash scripts/eval_cross_terrain_stress.sh --metric obstacle all
-```
-
-Key hard-evaluation results:
-
-| Checkpoint source | Eval hard obstacle pass | Eval hard gap pass | Eval hard stairs pass | Fall before obstacle |
-|-------------------|------------------------:|-------------------:|----------------------:|---------------------:|
-| rough | 25.00% | 7.89% | 90.00% | 64.58% |
-| easy | 0.00% | 0.00% | 0.00% | 89.66% |
-| medium | 65.79% | 33.33% | 95.00% | 31.58% |
-| hard | 100.00% | 100.00% | 100.00% | 0.00% |
-
-This result refines the timeout/progress conclusion. Medium-to-hard looks strong under survival-style metrics, but obstacle crossing reveals that medium still fails many hard-gap episodes. Its hard stairs pass rate is 95.00%, while its hard gap pass rate is only 33.33%. The hard checkpoint is therefore not merely surviving longer; under the official stress protocol it explicitly crosses the supported hard gap and stairs boundaries at 100.00%.
-
-### 5.8 Result files and figures
-
-Quantitative result files:
-
-- `results/metrics/flat_baseline.csv`
-- `results/metrics/rough_baseline.csv`
-- `results/metrics/parkour_training_summary.csv`
-- `results/metrics/parkour_timeout_eval.csv`
-- `results/metrics/obstacle_crossing_cross_terrain_stress_eval.csv`
-- `results/metrics/extreme_random_timeout_stress_eval.csv`
-- `results/metrics/extreme_random_progress_stress_eval.csv`
-- `results/metrics/extreme_random_obstacle_stress_eval.csv`
-- `results/tables/ablation_summary.md`
-- `results/tables/generalization_analysis.md`
-- `results/tables/timeout_vs_progress_delta.md`
-- `results/tables/timeout_cross_terrain_summary.md`
-- `results/tables/timeout_cross_terrain_stress_summary.md`
-- `results/tables/traversal_progress_cross_terrain_summary.md`
-- `results/tables/traversal_progress_cross_terrain_stress_summary.md`
-- `results/tables/obstacle_crossing_cross_terrain_stress_summary.md`
-
-Learning-curve figures:
-
-- Flat: `results/figures/flat_mean_reward.png`, `results/figures/flat_episode_length.png`
-- Rough: `results/figures/rough_mean_reward.png`, `results/figures/rough_episode_length.png`
-- Parkour: `results/figures/parkour_mean_reward.png`
-- Parkour episode length by tier: `results/figures/parkour_easy_episode_length.png`, `results/figures/parkour_medium_episode_length.png`, `results/figures/parkour_hard_episode_length.png`
-- MDP individual training curves: `results/figures/rough_mdp_episode_length.png`, `results/figures/rough_mdp_mean_reward.png`, `results/figures/parkour_hard_mdp_episode_length.png`, `results/figures/parkour_hard_mdp_mean_reward.png`
-- MDP ablation comparison: `results/figures/mdp_ablation_rough_comparison.png`, `results/figures/mdp_ablation_hard_comparison.png`
-
-### 5.9 Videos
-
-The rollout videos are stored under `report/assets/`.
-
-| Clip | File | Description |
-|------|------|-------------|
-| Flat baseline play | `report/assets/flat_play.mp4` | Stable velocity tracking on flat terrain with minimal falls |
-| Rough baseline play | `report/assets/rough_play.mp4` | Locomotion on procedural rough terrain with visibly higher difficulty |
-| Parkour easy play | `report/assets/parkour_easy_play.mp4` | Successful custom parkour rollout on the easiest terrain tier |
-| Parkour medium play | `report/assets/parkour_medium_play.mp4` | Custom parkour rollout with gap terrain and higher obstacles |
-| Parkour hard | `report/assets/parkour_hard_play.mp4` | Official 3000-iteration hard-tier rollout |
-
-The hard checkpoint is kept at 3000 iterations so the qualitative video uses the same training budget as easy and medium. This supports the interpretation that the hard terrain is a real stress test under a fair comparison protocol rather than only a longer-training comparison.
-
-### 5.10 MDP ablation: reward shaping
-
-A lightweight reward-shaping ablation was implemented, adding two reward terms on top of the upstream G1 velocity-tracking rewards. The MDP ablation draws from the Hiking-in-the-Wild foothold-safety idea but stays within the existing velocity-tracking parkour pipeline: it modifies only rewards, not observations, actions, or terrain generation.
-
-Two dedicated MDP tasks were trained:
-
-| Task | Terrain | Reward class | Key addition |
-|------|---------|--------------|--------------|
-| Rough MDP | Official rough terrain (`ROUGH_TERRAINS_CFG`) | `G1ParkourMDPRewards` | `parkour_progress` + `foothold_safety` |
-| Hard MDP | Hard parkour terrain (`PARKOUR_HARD_TERRAINS_CFG`) | `G1ParkourMDPRewards` | `foothold_safety` (hard baseline already includes `parkour_progress` via `G1ParkourRewards`) |
-
-The two reward terms are:
-
-- **`parkour_progress`** (weight +0.5): rewards world-x forward base velocity, clamped to [0, 0.75]. Complementary to the inherited base-frame velocity-tracking reward.
-- **`foothold_safety`** (weight −0.2): a lightweight safety cost penalizing foot sliding while in contact, support points dropping far below the base (gap/edge stepping proxy), and large height mismatch between simultaneously contacting feet. Uses only existing ankle contact and body state sensors.
-
-A `termination_fall` term was implemented but removed after early testing showed it truncated exploration too aggressively (average episode length ~5 steps). The inherited `base_contact` termination is sufficient.
-
-Both MDP policies were trained for 3000 iterations. Full timeout, traversal progress, and obstacle crossing cross and stress evaluations were completed, using the same 4×4 matrix protocol as the terrain ablation.
-
-#### Timeout comparison
-
-**Random cross-terrain:**
-
-| Source | → rough | → easy | → medium | → hard |
+| Source | Eval rough | Eval easy | Eval medium | Eval hard |
 |---|---:|---:|---:|---:|
-| rough | 95.31% | 98.44% | 68.75% | 29.69% |
-| rough_mdp | 100.00% | 100.00% | 76.56% | 70.31% |
-| Δ | +4.69 | +1.56 | +7.81 | **+40.62** |
-| hard | 100.00% | 100.00% | 96.88% | 95.31% |
-| hard_mdp | 100.00% | 100.00% | 96.88% | 92.19% |
-| Δ | 0.00 | 0.00 | 0.00 | −3.12 |
+| Rough | 95.31% | 98.44% | 68.75% | 29.69% |
+| Rough MDP | 100.00% | 100.00% | 76.56% | 70.31% |
+| Hard | 100.00% | 100.00% | 96.88% | 95.31% |
+| Hard MDP | 100.00% | 100.00% | 96.88% | 92.19% |
 
-**Fixed-row stress (row 9):**
+The largest effect is from Rough Baseline to Rough MDP. Hard-terrain timeout increases from 29.69% to 70.31%, a gain of 40.62 percentage points, even though the policy has no parkour terrain exposure during training. This indicates that progress and foothold-safety shaping can extract transferable obstacle-competence skills from the official rough terrain distribution.
 
-| Source | → rough | → easy | → medium | → hard |
-|---|---:|---:|---:|---:|
-| rough | 98.44% | 78.12% | 56.25% | 31.25% |
-| rough_mdp | 98.44% | 100.00% | 92.19% | 70.31% |
-| Δ | 0.00 | **+21.88** | **+35.94** | **+39.06** |
-| hard | 100.00% | 100.00% | 96.88% | 95.31% |
-| hard_mdp | 100.00% | 100.00% | 98.44% | 96.88% |
-| Δ | 0.00 | 0.00 | +1.56 | +1.57 |
+For Hard Baseline to Hard MDP, timeout rates are already near ceiling, so the main difference appears in secondary metrics. Hard MDP improves velocity tracking precision by approximately 0.41-0.72 m/s across evaluation environments and improves medium obstacle crossing from 87.50% to 100.00%. However, it also reduces mean forward distance by roughly 8-10 m under stress, indicating a safety-vs-speed tradeoff.
 
-#### Obstacle crossing comparison (stress)
+## 6. ExtremeRandom OOD Stress
 
-**Obstacle pass rate:**
+The evaluation-only `Isaac-Velocity-Parkour-G1-ExtremeRandom-Play-v0` environment is used as an additional out-of-distribution stress test. Under this harder random terrain distribution, Hard MDP improves timeout and traversal-progress success from 90.62% to 95.31%, reduces fall rate from 9.38% to 4.69%, and lowers velocity tracking error from 13.2177 to 10.9671. Obstacle pass rises from 21.43% to 51.22%, and fall-before-obstacle decreases from 57.14% to 31.71%.
 
-| Source | → rough | → easy | → medium | → hard |
-|---|---:|---:|---:|---:|
-| rough | 88.46% | 88.46% | 16.39% | 25.00% |
-| rough_mdp | 100.00% | 100.00% | 77.78% | 41.03% |
-| Δ | +11.54 | +11.54 | **+61.39** | +16.03 |
-| hard | 100.00% | 100.00% | 87.50% | 100.00% |
-| hard_mdp | 100.00% | 100.00% | 100.00% | 100.00% |
-| Δ | 0.00 | 0.00 | **+12.50** | 0.00 |
+## 7. Discussion
 
-**Gap pass rate (key stress metric):**
+The results establish a progression from flat locomotion to rough locomotion and then to structured parkour. Easy parkour is stable but narrow: it performs well on its own terrain but fails to transfer to hard. Medium parkour is the minimum completed terrain tier with strong hard-terrain survival transfer, but obstacle crossing reveals that medium still lacks reliable hard-gap competence. Hard parkour is the strongest source policy and fully solves the supported hard gap and stairs boundaries under stress.
 
-| Source | → medium | → hard |
-|---|---:|---:|
-| rough | 0.00% | 7.89% |
-| rough_mdp | 50.00% | 21.43% |
-| Δ | **+50.00** | +13.54 |
-| hard | 66.67% | 100.00% |
-| hard_mdp | 100.00% | 100.00% |
-| Δ | **+33.33** | 0.00 |
+The MDP ablation shows that reward design is not only a fine-tuning detail. Rough MDP substantially improves hard-terrain transfer without parkour terrain exposure, suggesting that the inherited velocity-tracking reward alone underuses available terrain information. On hard terrain, the additional foothold-safety cost makes the policy more conservative. This reduces average forward distance but improves tracking precision and out-of-distribution obstacle crossing.
 
-#### Velocity tracking and forward distance
+The main limitation is metric semantics. Timeout measures survival, traversal progress checks forward movement, and obstacle crossing checks base-level boundary completion. These are sufficient for the current terrain generator, but they do not directly measure foot-contact quality, exact foothold placement, or mesh-level contact safety.
 
-Velocity tracking error drops consistently for Hard MDP (−0.41 to −0.72 m/s across all eval envs, largest improvement on hard at −0.72 m/s or 48%). However, mean forward distance in stress mode decreases by 7.92–9.89 m, indicating that `foothold_safety` produces a more conservative gait with improved foot placement precision at the cost of raw forward speed.
+## 8. Conclusion
 
-#### MDP ablation conclusions
+This project implements a complete custom parkour locomotion pipeline for Unitree G1 in Isaac Lab. It defines three increasing terrain tiers, trains PPO policies for each tier, evaluates cross-terrain generalization with three metric families, and studies reward-shaping effects through MDP ablations.
 
-1. **Rough Baseline → Rough MDP is the largest effect.** Hard terrain timeout increases from 29.69% to 70.31% (+40.62pp random, +39.06pp stress). Fall rate halves. Medium obstacle pass jumps from 16.39% to 77.78% (+61.39pp), driven by gap pass improving from 0.00% to 50.00%. Remarkably, rough_mdp achieves this without any parkour terrain exposure — it trained only on the official rough terrain generator. This confirms that reward shaping alone can extract transferable obstacle-competence skills from non-parkour terrain.
+Main findings:
 
-2. **Hard Baseline → Hard MDP shows precision gains with a safety-vs-speed tradeoff.** Timeout rates are near ceiling for both (≥92.19%), so the comparison is dominated by secondary metrics. Velocity tracking error drops 0.41–0.72 m/s. Medium obstacle pass reaches 100% (from 87.50%), and medium gap pass reaches 100% (from 66.67%). Forward distance decreases by 7.92–9.89 m, reflecting the `foothold_safety` cost prioritizing careful foot placement over raw speed.
+- Terrain difficulty increases clearly from easy to medium to hard in reward, fall rate, and tracking error.
+- Medium is the first tier with strong survival transfer to hard terrain, but hard-gap crossing remains limited.
+- Hard training gives the best overall source checkpoint, reaching at least 95.31% timeout rate across evaluation environments and 100.00% hard gap/stairs obstacle pass under stress.
+- MDP reward shaping improves rough-to-hard timeout from 29.69% to 70.31% without parkour terrain exposure.
+- Hard MDP improves precision and ExtremeRandom obstacle crossing while adopting a more conservative forward-speed profile.
 
-3. **`parkour_progress` alone is already strong.** Hard Baseline (which includes `parkour_progress`) reaches ≥95.31% timeout and 100% obstacle pass on hard. The additional gain from `foothold_safety` is concentrated in tracking precision and gap crossing on medium terrain.
-
-4. **Rough MDP approaches medium baseline competence without parkour terrain.** Rough MDP → hard timeout (70.31%) falls between rough baseline (29.69%) and medium baseline (87.50%). Its obstacle pass on hard (41.03%) also sits between rough (25.00%) and medium (65.79%). This confirms that the MDP rewards teach basic obstacle awareness even from standard rough terrain, though parkour-specific terrain exposure remains necessary for higher obstacle pass rates.
-
-### 5.11 ExtremeRandom OOD stress add-on
-
-The registered `Isaac-Velocity-Parkour-G1-ExtremeRandom-Play-v0` environment was used as an additional OOD stress test after the main terrain and MDP ablations were complete. This evaluation is intentionally kept separate from the official 4x4 cross/stress matrices: only the `hard` and `hard_mdp` checkpoints are compared, the eval environment is fixed to `extreme`, and the outputs are written to dedicated `extreme_random_*` CSV files.
-
-The protocol matches the fixed-row stress setup where possible (`NUM_EPISODES=64`, `NUM_ENVS=32`, `SEED=42`, `STRESS_ROW=9`, `STRESS_MODE=max`). The result reinforces the MDP interpretation. Hard-MDP improves timeout and traversal-progress success from 90.62% to 95.31%, lowers fall rate from 9.38% to 4.69%, and reduces velocity tracking error from 13.2177 to 10.9671. The terrain-aware obstacle result is larger: obstacle pass rises from 21.43% to 51.22%, with fall-before-obstacle decreasing from 57.14% to 31.71%.
-
-This OOD result does not replace the official hard-to-hard finding, where both hard and hard_mdp already solve the supported hard stress obstacles. Instead, it shows that `foothold_safety` remains useful beyond the in-distribution hard terrain preset: under a more extreme random obstacle distribution, Hard-MDP is more conservative in average forward distance but substantially better at staying upright long enough to cross measured gap/stairs boundaries.
-
----
-
-## 6. Discussion
-
-The results establish a progression from flat locomotion to rough locomotion and then to structured parkour terrain. Flat terrain remains the easiest setting, with near-perfect timeout rate and the lowest tracking error. Rough terrain increases failure rate and tracking error, which confirms that terrain complexity is visible in the training metrics.
-
-The custom parkour results show that the inherited rough G1 configuration is a viable base for path-B parkour. Easy parkour converges reliably and keeps the fall rate below the rough baseline, despite using structured obstacles instead of generic rough terrain. Medium and hard then expose the expected degradation as gaps, obstacle heights, and platform constraints increase.
-
-The hard result has two sides. Training metrics still show that hard is the most difficult tier under the same 3000-iteration budget: it has the lowest reward, highest fall rate, and weakest tracking quality among the parkour tiers. However, the formal obstacle crossing stress evaluation shows that the hard checkpoint has learned the supported hard gap/stairs geometry well: hard-to-hard reaches 100.00% obstacle, gap, and stairs pass rates. The remaining weakness is therefore not that the current hard policy cannot solve the official hard obstacles, but that lower-difficulty policies, especially medium, do not fully transfer to hard gaps.
-
-The MDP ablation adds evidence that reward shaping matters. Adding `parkour_progress` and `foothold_safety` to rough terrain training produces a policy that transfers to hard parkour terrain at 70.31% timeout (vs. 29.69% for rough baseline), without any parkour terrain exposure. This suggests that the inherited velocity-tracking reward alone limits obstacle competence even on the official rough curriculum. On hard terrain, where `parkour_progress` is already present, adding `foothold_safety` produces consistent velocity tracking improvements at the cost of forward speed — a safety-vs-speed tradeoff that is appropriate for precision obstacle navigation. The ExtremeRandom OOD stress result strengthens this interpretation: Hard-MDP gives up some average forward distance but improves survival, tracking, and obstacle-boundary crossing under a harsher random terrain distribution.
-
-The main evaluation limitation is now the level of semantic precision. Timeout measures survival without base-contact failure. Traversal progress adds a forward-distance sanity check. Obstacle crossing adds base-level gap/stairs boundary success, which is enough to support obstacle-completion claims for the current terrain generator. It still does not verify foot-contact-level safety, precise foothold placement, or mesh-contact semantics. Further improvement should therefore focus on stricter contact-aware obstacle metrics, out-of-distribution obstacle layouts, and optional AMP/SMP-style motion priors rather than on another survival-only metric.
-
----
-
-## 7. Conclusion
-
-This project built and trained a custom parkour locomotion setup for the Unitree G1 robot in Isaac Lab under path B.
-
-- The flat baseline verified the training, logging, checkpointing, and visualization workflow.
-- The rough baseline confirmed that the pipeline remains effective with terrain sensing and curriculum.
-- The custom parkour environment adds three terrain difficulty tiers and trains policies for easy, medium, and hard obstacle settings.
-- The parkour metrics show a clear difficulty gradient: fall rate and tracking error increase from easy to medium to hard, while reward decreases.
-- Cross-terrain timeout/progress evaluation shows that easy is stable but narrow, medium is the first tier with strong survival transfer to hard, and hard is the strongest generalist source policy.
-- Terrain-aware obstacle crossing stress evaluation shows that hard-to-hard reaches 100.00% obstacle, gap, and stairs pass rates, while medium-to-hard remains limited by hard gaps at 33.33%.
-- The MDP reward-shaping ablation demonstrates that adding `parkour_progress` and `foothold_safety` to rough terrain training increases hard-terrain timeout from 29.69% to 70.31% (+40.62pp) without any parkour terrain exposure. On hard terrain, adding `foothold_safety` improves velocity tracking precision by 0.41–0.72 m/s across all eval environments at a moderate forward-speed cost.
-- The ExtremeRandom OOD stress add-on shows the same hard-vs-hard_mdp pattern under a harsher evaluation-only terrain: Hard-MDP improves timeout/progress to 95.31% and obstacle pass to 51.22%, while reducing fall-before-obstacle failures.
-
-The remaining work beyond this submission is to add stricter foot-contact or foothold-safety metrics, test broader out-of-distribution obstacle layouts, and optionally explore AMP/SMP motion-prior extensions.
+Together, these results support the feasibility of using Isaac Lab's G1 rough locomotion stack as a base for structured humanoid parkour and provide a reproducible foundation for further navigation-style or foothold-aware extensions.
