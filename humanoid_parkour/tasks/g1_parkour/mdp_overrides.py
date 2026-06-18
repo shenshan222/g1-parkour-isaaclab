@@ -81,8 +81,3 @@ def termination_fall(env, minimum_height: float = 0.3) -> torch.Tensor:
     """
     root_height = env.scene["robot"].data.root_pos_w[:, 2]
     return root_height < minimum_height
-
-
-def check_obstacle_passed(env, checkpoint_x: float) -> torch.Tensor:
-    """Return True if the robot passed a terrain checkpoint (for metrics)."""
-    raise NotImplementedError
