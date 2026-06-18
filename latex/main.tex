@@ -30,7 +30,7 @@ Robust humanoid locomotion over structured obstacles remains difficult because a
 
 Humanoid parkour locomotion requires more than stable flat-ground walking. A useful policy must move over uneven terrain, climb or descend structured height changes, cross gaps, and avoid falls while still obeying a locomotion command. The goal of this project is to build a reproducible parkour-oriented locomotion environment for the Unitree G1 robot in Isaac Lab. The project extends an existing locomotion task with custom terrain design, reinforcement-learning training, systematic evaluation, and ablation analysis.
 
-The repository is a compact Isaac Lab task package. It stores task registration code, terrain configurations, reward extensions, scripts and results. Isaac Lab itself remains an external dependency. Large artifacts such as checkpoints, TensorBoard event files are kept outside repository.
+The repository is a compact Isaac Lab task package. It stores task registration code, terrain configurations, reward extensions, scripts and results. Isaac Lab itself remains an external dependency. Large artifacts such as checkpoints and TensorBoard event files are kept outside the repository.
 
 The project repository is available at: \url{https://github.com/shenshan222/g1-parkour-isaaclab}.
 
@@ -44,59 +44,76 @@ The main contributions are:
     \item an additional ExtremeRandom out-of-distribution stress evaluation for hard and hard-MDP policies.
 \end{itemize}
 
+
 \section{Method}
 \label{sec:method}
 
-\subsection{Framework and base task}
+\subsection{Framework and task objective}
 
-All custom environments inherit from Isaac Lab's manager-based G1 rough velocity-tracking configuration. This preserves the official G1 robot model, action space, proprioceptive observations, height scan, terrain curriculum, and base-contact failure termination. The policy outputs joint-position targets for the robot, and the training algorithm is PPO implemented through RSL-RL.
+The task is built on Isaac Lab's manager-based Unitree G1 rough velocity-tracking environment. The inherited environment provides the robot model, low-level actuation interface, proprioceptive observations, height-scan sensing, terrain curriculum machinery, and base-contact failure termination. This project keeps the underlying locomotion interface unchanged and studies how terrain curriculum, reward shaping, and evaluation metrics affect obstacle locomotion.
 
-Two official reference baselines are trained first:
-\begin{itemize}[leftmargin=*,noitemsep,nolistsep,topsep=0pt]
-    \item \textbf{Flat baseline}: \texttt{Isaac-Velocity-Flat-G1-v0}, trained for 1500 iterations.
-    \item \textbf{Rough baseline}: \texttt{Isaac-Velocity-Rough-G1-v0}, trained for 3000 iterations with the official rough terrain generator and height scanner.
-\end{itemize}
-The rough baseline is the direct parent of all parkour tasks because it already contains the terrain sensing and curriculum structure needed for uneven-ground locomotion.
+At each episode, the policy is commanded to track a planar velocity command while moving over a generated terrain tile. A successful parkour policy should therefore satisfy three requirements at the same time: it should avoid falling, maintain reasonable command tracking, and make forward progress across terrain discontinuities such as stairs and gaps.
 
-\subsection{Parkour terrain tiers}
+\subsection{MDP formulation}
 
-The parkour task replaces the official rough terrain generator with three custom terrain-generator presets:
-\begin{itemize}[leftmargin=*,noitemsep,nolistsep,topsep=0pt]
-    \item \textbf{Easy}: easy obstacles and no gap terrain.
-    \item \textbf{Medium}: medium obstacles and the first gap terrain setting.
-    \item \textbf{Hard}: hard obstacles and wider gaps.
-\end{itemize}
-The train task IDs are \texttt{Isaac-Velocity-Parkour-G1-Easy-v0}, \texttt{Isaac-Velocity-Parkour-G1-Medium-v0}, and \texttt{Isaac-Velocity-Parkour-G1-Hard-v0}. Each has a corresponding \texttt{-Play-v0} task for visualization and evaluation. The implementation is mainly in \texttt{humanoid\_parkour/tasks/g1\_parkour/parkour\_env\_cfg.py} and \texttt{humanoid\_parkour/terrains/parkour\_terrain\_cfg.py}.
-
-\subsection{Reward extensions}
-
-All parkour tiers use the inherited G1 rough locomotion rewards and add a parkour-progress term:
+I model the task as a finite-horizon Markov decision process
 \begin{equation}
-    r_{\mathrm{progress}} = \mathrm{clip}(0.5 v_x^{w}, 0, 0.75),
+    \mathcal{M} = (\mathcal{S}, \mathcal{A}, p, r, \gamma, T).
 \end{equation}
-where $v_x^{w}$ is the base linear velocity along the world $x$ axis. This term complements base-frame velocity tracking by directly rewarding forward traversal along the terrain direction.
+The state $s_t$ is represented through Isaac Lab manager terms, including base and joint states, projected gravity, commanded velocity, previous action, contact information, and terrain height-scan observations. The action $a_t$ is a vector of joint-position targets for the G1 robot. The transition $p(s_{t+1}\mid s_t,a_t)$ is induced by Isaac Sim physics, terrain geometry, contact dynamics, and the command sampler.
 
-The MDP ablation further adds a foothold-safety cost:
+The inherited G1 rough task already contains the base velocity-tracking, posture, action regularization, and failure-related reward terms. Parkour training adds a forward-progress reward:
 \begin{equation}
-    c_{\mathrm{foot}} =
-    c_{\mathrm{slide}} + 2.0 c_{\mathrm{drop}} + 0.5 c_{\mathrm{mismatch}},
+    r_t = r_t^{\mathrm{G1}} + w_p r_t^{\mathrm{progress}},
+    \qquad
+    r_t^{\mathrm{progress}} = \mathrm{clip}(0.5 v_{x,t}^{w}, 0, 0.75),
+    \qquad
+    w_p = 0.5,
 \end{equation}
-with reward weight $-0.2$. The cost uses only existing ankle contact forces and body-state signals. It penalizes foot sliding while in contact, support points that drop far below the base, and large height mismatch between contacting feet. A stricter early fall termination was tested but removed because it truncated exploration too aggressively; the inherited base-contact termination is sufficient for the final experiments.
+where $v_{x,t}^{w}$ is the base velocity along the world $x$ axis. This term is deliberately simple: it does not identify individual obstacles, but it biases the policy toward traversing the terrain rather than only surviving in place.
+
+The MDP ablation adds a foothold-safety cost while keeping the robot, observations, action space, terrain generator, PPO algorithm, and evaluation protocol fixed:
+\begin{equation}
+    r_t^{\mathrm{MDP}} =
+    r_t^{\mathrm{G1}} + w_p r_t^{\mathrm{progress}} - w_f c_t^{\mathrm{foothold}},
+    \qquad
+    w_f = 0.2.
+\end{equation}
+The cost is
+\begin{equation}
+    c_t^{\mathrm{foothold}} =
+    c_t^{\mathrm{slide}} + 2.0 c_t^{\mathrm{drop}} + 0.5 c_t^{\mathrm{mismatch}}.
+\end{equation}
+Here $c_t^{\mathrm{slide}}$ penalizes foot sliding while a foot is in contact, $c_t^{\mathrm{drop}}$ penalizes support points that drop far below the base as a proxy for edge or gap stepping, and $c_t^{\mathrm{mismatch}}$ penalizes large height differences between simultaneously contacting feet. A stricter early fall termination was tested during development but removed from the final MDP because it ended episodes too early and prevented exploration. The final tasks use the inherited base-contact termination.
+
+\subsection{Parkour terrain curriculum}
+
+The parkour curriculum replaces the official rough terrain generator with three terrain presets. Each preset mixes structured terrain components such as stairs, boxes, rough patches, slopes, and, for medium and hard tiers, gaps. The key difficulty ranges are summarized in \Cref{tab:terrain-curriculum}.
+
+\begin{table}[t]
+    \caption{\textbf{Parkour terrain curriculum.} Difficulty increases through higher steps and boxes, wider gaps, stronger slopes, and narrower feasible platforms.}
+    \label{tab:terrain-curriculum}
+    \centering
+    \begin{tabular}{lccc}
+        \toprule
+        Terrain parameter & Easy & Medium & Hard \\
+        \midrule
+        Step height & 0.05--0.17 m & 0.05--0.23 m & 0.10--0.28 m \\
+        Gap width & none & 0.05--0.28 m & 0.15--0.45 m \\
+        Box/grid height & 0.05--0.15 m & 0.05--0.20 m & 0.08--0.25 m \\
+        Slope range & up to 0.30 & up to 0.40 & up to 0.45 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
 \subsection{Evaluation metrics}
 
-The project uses three complementary metric families:
-\begin{itemize}[leftmargin=*,noitemsep,nolistsep,topsep=0pt]
-    \item \textbf{Timeout}: an episode succeeds if it reaches timeout without base-contact failure.
-    \item \textbf{Traversal progress}: an episode succeeds if it avoids failure and reaches at least 4 m forward distance.
-    \item \textbf{Obstacle crossing}: an episode succeeds if it avoids failure and the robot base crosses the geometry boundary of supported gap or stairs terrain.
-\end{itemize}
-Timeout measures survival robustness. Traversal progress checks that survival is accompanied by forward movement. Obstacle crossing is the most terrain-specific metric because it uses generated terrain geometry rather than a fixed distance threshold.
+The evaluation pipeline reports three success criteria. Timeout success means an episode reaches the horizon without base-contact failure. Traversal-progress success means the robot avoids failure and reaches at least 4 m forward displacement. Obstacle-crossing success means the robot avoids failure and its base crosses the generated geometry boundary of a supported gap or stairs obstacle. Timeout measures survival, progress distinguishes survival from standing still, and obstacle crossing measures terrain-specific completion.
 
 \section{Experimental setup}
 \label{sec:setup}
 
-All completed training runs were executed on an AutoDL Linux GPU environment with an NVIDIA GeForce RTX 3090. Isaac Lab was installed externally, while this repository was installed as an editable task package. 
+All completed training runs were executed on an AutoDL Linux GPU environment with an NVIDIA GeForce RTX 3090. Isaac Lab was installed externally, while this repository was installed as an editable task package. Policies were trained with PPO through RSL-RL using the inherited G1 rough runner configuration unless otherwise stated. 
 
 \Cref{tab:runs} summarizes the training runs used throughout this report. The table separates official Isaac Lab baselines, custom parkour terrain policies, and reward-shaping MDP variants. 
 
@@ -119,12 +136,16 @@ All completed training runs were executed on an AutoDL Linux GPU environment wit
     \end{tabular}
 \end{table}
 
+The official flat baseline uses \texttt{Isaac-Velocity-Flat-G1-v0}. The rough baseline uses \texttt{Isaac-Velocity-Rough-G1-v0} and is the direct parent of all parkour tasks. The three parkour training tasks are \texttt{Isaac-Velocity-Parkour-G1-Easy-v0}, \texttt{Isaac-Velocity-Parkour-G1-Medium-v0}, and \texttt{Isaac-Velocity-Parkour-G1-Hard-v0}; each has a corresponding play task for visualization and evaluation. The MDP variants are \texttt{Isaac-Velocity-Rough-G1-MDP-v0} and \texttt{Isaac-Velocity-Parkour-G1-Hard-MDP-v0}. Implementation files are concentrated in the environment configuration, terrain configuration, MDP override, and evaluation modules of the task package.
+
+For cross-terrain evaluation, I load each source checkpoint and evaluate it on rough, easy, medium, and hard play environments. Random cross-terrain evaluation samples terrain type and difficulty inside the terrain grid, while fixed-row stress evaluation pins all environments to the highest difficulty row. Unless otherwise noted, cross/stress evaluations use 64 episodes, 32 parallel environments, and seed 42.
+
 \section{Results}
 \label{sec:results}
 
 \subsection{Reference baselines}
 
-\Cref{tab:baseline} compares the two official G1 baselines used to validate the project pipeline.The flat baseline verifies the training pipeline: it reaches 99.56\% timeout rate and only 0.44\% base-contact failure. The rough baseline is harder but remains stable, with 94.62\% timeout rate and 5.41\% base-contact failure. Its XY velocity tracking error is higher than the flat baseline, increasing from 0.2087 m/s to 0.3407 m/s. This confirms that the official rough task is a meaningful stepping stone between flat walking and parkour.
+\Cref{tab:baseline} compares the two official G1 baselines used to validate the project pipeline. The flat baseline verifies the training pipeline: it reaches 99.56\% timeout rate and only 0.44\% base-contact failure. The rough baseline is harder but remains stable, with 94.62\% timeout rate and 5.41\% base-contact failure. Its XY velocity tracking error is higher than the flat baseline, increasing from 0.2087 m/s to 0.3407 m/s. This confirms that the official rough task is a meaningful stepping stone between flat walking and parkour.
 
 
 \begin{table}[t]
@@ -145,6 +166,15 @@ All completed training runs were executed on an AutoDL Linux GPU environment wit
 \end{table}
 
 \subsection{Parkour training}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.96\linewidth]{figures/terrain_rollout_montage.png}
+    \caption{\textbf{Policy rollouts on representative terrains.} Frames are extracted from the recorded rough, easy, medium, and hard play videos. They provide qualitative evidence that the learned policies are evaluated on visibly different terrain structures rather than on a single flat locomotion setting.}
+    \label{fig:terrain-rollout}
+\end{figure}
+
+\Cref{fig:terrain-rollout} shows representative policy rollouts on rough and parkour terrains. The visual progression matches the quantitative curriculum: easy terrain mainly tests structured uneven walking, medium introduces gaps and stronger obstacles, and hard combines wider discontinuities with tighter feasible footholds.
 
 \begin{table}[t]
     \caption{\textbf{Final training summary for parkour tiers.} The same 3000-iteration budget produces a clear difficulty gradient.}
@@ -171,6 +201,31 @@ All completed training runs were executed on an AutoDL Linux GPU environment wit
 \subsection{Cross-terrain generalization}
 
 The 4-by-4 cross-terrain evaluation loads rough/easy/medium/hard checkpoints and evaluates each on rough/easy/medium/hard play environments. Random cross-terrain evaluation samples terrain type and difficulty inside the terrain grid, while fixed-row stress evaluation uses the highest difficulty row for each terrain preset. I report three metrics: timeout rate, traversal-progress rate, and geometry-aware obstacle-crossing rate.
+
+\begin{figure}[t]
+    \centering
+    \begin{subfigure}[t]{0.32\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/timeout_stress_heatmap.png}
+        \caption{Timeout}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.32\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/progress_stress_heatmap.png}
+        \caption{Progress}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.32\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/obstacle_stress_heatmap.png}
+        \caption{Obstacle}
+    \end{subfigure}
+    \caption{\textbf{Stress cross-terrain heatmaps.} Survival and progress show similar transfer patterns, while obstacle crossing exposes terrain-specific failures that timeout alone can hide.}
+    \label{fig:stress-heatmaps}
+\end{figure}
+
+\Cref{fig:stress-heatmaps} summarizes the fixed-row stress protocol. The heatmaps make the main pattern visible: rough and easy policies do not transfer reliably to medium or hard obstacles, medium training is the first setting with strong hard-terrain survival, and hard training gives the most consistent source policy.
 
 \subsubsection{Timeout}
 
@@ -269,7 +324,24 @@ To improve the determinism of obstacle-crossing evaluation, I use only the fixed
 \label{sec:ablations}
 
 \subsection{MDP ablation}
-The MDP ablation evaluates whether lightweight reward shaping can improve obstacle competence without changing the robot, action space, observation space, or terrain generator. Two variants are trained: \texttt{rough\_mdp} on official rough terrain and \texttt{hard\_mdp} on hard parkour terrain.
+The MDP ablation evaluates whether lightweight reward shaping can improve obstacle competence without changing the robot, action space, observation space, terrain generator, or training budget. Two variants are trained: \texttt{rough\_mdp} on official rough terrain and \texttt{hard\_mdp} on hard parkour terrain.
+
+\begin{figure}[t]
+    \centering
+    \begin{subfigure}[t]{0.48\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/mdp_ablation_rough_comparison.png}
+        \caption{Rough vs. Rough MDP}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.48\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{figures/mdp_ablation_hard_comparison.png}
+        \caption{Hard vs. Hard MDP}
+    \end{subfigure}
+    \caption{\textbf{MDP ablation training comparison.} Reward shaping improves episode stability and final training statistics, but the policy comparison is interpreted using the shared evaluation metrics below because reward scales differ across MDPs.}
+    \label{fig:mdp-ablation-training}
+\end{figure}
 
 \begin{table}[t]
     \caption{\textbf{Final training summary for MDP ablation.} Rough and hard baselines are compared with their corresponding reward-shaped MDP variants under the same 3000-iteration budget.}
@@ -282,7 +354,7 @@ The MDP ablation evaluates whether lightweight reward shaping can improve obstac
         Mean reward & 24.01 & 28.25 & 11.34 & 17.93 \\
         Mean episode length & 984.5 & 1000.0 & 941.7 & 991.2 \\
         Timeout rate & 94.62\% & 97.85\% & 89.08\% & 95.29\% \\
-        Fall rate & 5.41\% & 2.15 & 10.92\% & 4.71\% \\
+        Fall rate & 5.41\% & 2.15\% & 10.92\% & 4.71\% \\
         XY tracking error & 0.3407 & 0.3718 & 0.4407 & 0.4274 \\
         Yaw tracking error & 0.7501 & 0.6676 & 1.0088 & 0.9165 \\
         Curriculum level & 5.7961 & 5.705 & 5.6389 & 5.769 \\
@@ -306,7 +378,7 @@ The MDP ablation evaluates whether lightweight reward shaping can improve obstac
     \end{tabular}
 \end{table}
 
-\Cref{tab:mdp-training} shows the training results after modifying the MDP. Most training metrics improve noticeably. However, because the reward definition is different, we cannot directly conclude from training metrics alone that the new MDP policy is stronger than the original one. A fair comparison still requires evaluating the policies under the same evaluation metrics.
+\Cref{fig:mdp-ablation-training,tab:mdp-training} show the training results after modifying the MDP. Most training metrics improve noticeably, especially episode length and fall rate. However, because the reward definition is different, the training reward should not be used as the sole evidence that the new policy is stronger. A fair comparison still requires evaluating the policies under the same timeout, progress, and obstacle metrics.
 
 \Cref{tab:mdp-obstacle} reports the fixed-row stress obstacle-crossing results for the MDP-shaped policies. Since parkour ability is the main focus, timeout and traversal-progress results are not repeated here. The results show clear improvements for both Rough MDP and Hard MDP. In particular, Rough MDP improves obstacle-crossing success on the medium environment by 61.39 percentage points over the rough baseline. This suggests that the modified MDP, namely the added \texttt{parkour\_progress} and \texttt{foothold\_safety} rewards, substantially improves the policy's obstacle-crossing ability. It also indicates that a moderately more conservative behavior pattern can have a positive effect on learning to cross obstacles.
 
