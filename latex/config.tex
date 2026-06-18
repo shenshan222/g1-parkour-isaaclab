@@ -1,0 +1,92 @@
+% Common packages
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{microtype}
+\usepackage{times}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb,mathbbol}
+% \usepackage{algorithmic}
+% \usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage{acronym}
+\usepackage{enumitem}
+\usepackage[pagebackref=true,breaklinks=true,colorlinks]{hyperref}
+\usepackage{balance}
+\usepackage{xspace}
+\usepackage{setspace}
+\usepackage[skip=3pt,font=small]{subcaption}
+\usepackage[skip=3pt,font=small]{caption}
+\usepackage[dvipsnames]{xcolor}
+\usepackage[capitalise]{cleveref}
+\usepackage{booktabs,tabularx,colortbl,multirow,array,makecell}
+% \usepackage{overpic,wrapfig}
+
+\usepackage{fancyhdr}
+\hypersetup{pdfencoding=auto,colorlinks=true,allcolors=black}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancyhf{}
+\pagestyle{fancy}
+\fancyhead[L]{\runningauthor}
+\fancyhead[R]{Tech Report PKU-IAI-\runningid}
+\fancyfoot[C]{\thepage}
+
+% Handy shorthand
+\makeatletter
+\DeclareRobustCommand\onedot{\futurelet\@let@token\@onedot}
+\def\@onedot{\ifx\@let@token.\else.\null\fi\xspace}
+\def\eg{\emph{e.g}\onedot} 
+\def\Eg{\emph{E.g}\onedot}
+\def\ie{\emph{i.e}\onedot} 
+\def\Ie{\emph{I.e}\onedot}
+\def\cf{\emph{c.f}\onedot} 
+\def\Cf{\emph{C.f}\onedot}
+\def\etc{\emph{etc}\onedot} 
+\def\vs{\emph{vs}\onedot}
+\def\wrt{w.r.t\onedot} 
+\def\dof{d.o.f\onedot}
+\def\etal{\emph{et al}\onedot}
+\makeatother
+
+\definecolor{gray}{gray}{0.9}
+
+% Handy math ops
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\newcommand{\norm}[1]{\left\Vert #1 \right\Vert}
+
+% % Spacing
+\frenchspacing
+% \medmuskip=2mu   % reduce spacing around binary operators
+% \thickmuskip=3mu % reduce spacing around relational operators
+% \setlength{\abovedisplayskip}{3pt}
+% \setlength{\belowdisplayskip}{3pt}
+% \setlength{\abovecaptionskip}{3pt}
+% \setlength{\belowcaptionskip}{3pt}
+\setlength\floatsep{0.5\baselineskip plus 3pt minus 2pt}
+\setlength\textfloatsep{0.5\baselineskip plus 3pt minus 2pt}
+\setlength\dbltextfloatsep{0.5\baselineskip plus 3pt minus 2pt}
+\setlength\intextsep{0.5\baselineskip plus 3pt minus 2pt}
+
+\makeatletter
+\renewcommand{\paragraph}{%
+  \@startsection{paragraph}{4}%
+  {\z@}{0ex \@plus 0ex \@minus 0ex}{-1em}%
+  {\hskip\parindent\normalfont\normalsize\bfseries}%
+}
+\makeatother
+
+% Graphics path
+\graphicspath{{figures/}}
+
+% Clever references
+\crefname{algorithm}{Alg.}{Algs.}
+\Crefname{algorithm}{Algorithm}{Algorithms}
+\crefname{section}{Sec.}{Secs.}
+\Crefname{section}{Section}{Sections}
+\crefname{table}{Tab.}{Tabs.}
+\Crefname{table}{Table}{Tables}
+\crefname{figure}{Fig.}{Fig.}
+\Crefname{figure}{Figure}{Figure}
+
+% Acronym
+\acrodef{pku}[PKU]{Peking University}
