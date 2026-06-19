@@ -27,6 +27,16 @@ class G1ParkourHardPPORunnerCfg(G1RoughPPORunnerCfg):
     experiment_name = "g1_parkour_hard"
 
 
+@configclass
+class G1RoughNoHeightScanPPORunnerCfg(G1RoughPPORunnerCfg):
+    experiment_name = "g1_rough_no_height_scan"
+
+
+@configclass
+class G1ParkourHardNoHeightScanPPORunnerCfg(G1RoughPPORunnerCfg):
+    experiment_name = "g1_parkour_hard_no_height_scan"
+
+
 # -----------------------------------------------------------------------------
 # Fine-tune configs (reduced learning rate for MDP-switch resume training)
 # -----------------------------------------------------------------------------

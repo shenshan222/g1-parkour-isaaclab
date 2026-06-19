@@ -75,6 +75,12 @@ def _apply_play_settings(cfg: G1RoughEnvCfg, preset: TerrainGeneratorCfg | None)
     cfg.events.push_robot = None
 
 
+def _disable_height_scan(cfg: G1RoughEnvCfg) -> None:
+    """Remove the height scanner sensor and policy observation for scanner ablations."""
+    cfg.scene.height_scanner = None
+    cfg.observations.policy.height_scan = None
+
+
 # -----------------------------------------------------------------------------
 # EASY
 # -----------------------------------------------------------------------------
@@ -94,6 +100,13 @@ class G1ParkourEasyEnvCfg_PLAY(G1ParkourEasyEnvCfg):
     def __post_init__(self):
         super().__post_init__()
         _apply_play_settings(self, PARKOUR_EASY_TERRAINS_CFG)
+
+
+@configclass
+class G1ParkourEasyNoHeightScanEnvCfg_PLAY(G1ParkourEasyEnvCfg_PLAY):
+    def __post_init__(self):
+        super().__post_init__()
+        _disable_height_scan(self)
 
 
 # -----------------------------------------------------------------------------
@@ -117,6 +130,13 @@ class G1ParkourMediumEnvCfg_PLAY(G1ParkourMediumEnvCfg):
         _apply_play_settings(self, PARKOUR_MEDIUM_TERRAINS_CFG)
 
 
+@configclass
+class G1ParkourMediumNoHeightScanEnvCfg_PLAY(G1ParkourMediumEnvCfg_PLAY):
+    def __post_init__(self):
+        super().__post_init__()
+        _disable_height_scan(self)
+
+
 # -----------------------------------------------------------------------------
 # HARD
 # -----------------------------------------------------------------------------
@@ -136,6 +156,41 @@ class G1ParkourHardEnvCfg_PLAY(G1ParkourHardEnvCfg):
     def __post_init__(self):
         super().__post_init__()
         _apply_play_settings(self, PARKOUR_HARD_TERRAINS_CFG)
+
+
+@configclass
+class G1ParkourHardNoHeightScanEnvCfg(G1ParkourHardEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        _disable_height_scan(self)
+
+
+@configclass
+class G1ParkourHardNoHeightScanEnvCfg_PLAY(G1ParkourHardNoHeightScanEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        _apply_play_settings(self, PARKOUR_HARD_TERRAINS_CFG)
+        _disable_height_scan(self)
+
+
+# -----------------------------------------------------------------------------
+# ROUGH NO HEIGHT SCAN
+# -----------------------------------------------------------------------------
+
+
+@configclass
+class G1RoughNoHeightScanEnvCfg(G1RoughEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        _disable_height_scan(self)
+
+
+@configclass
+class G1RoughNoHeightScanEnvCfg_PLAY(G1RoughNoHeightScanEnvCfg):
+    def __post_init__(self):
+        super().__post_init__()
+        _apply_play_settings(self, None)
+        _disable_height_scan(self)
 
 
 # -----------------------------------------------------------------------------

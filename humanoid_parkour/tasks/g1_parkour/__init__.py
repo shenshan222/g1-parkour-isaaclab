@@ -92,6 +92,70 @@ gym.register(
 )
 
 ##
+# HEIGHT SCANNER ABLATION
+##
+
+gym.register(
+    id="Isaac-Velocity-Rough-G1-NoHeightScan-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.parkour_env_cfg:G1RoughNoHeightScanEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{_AGENTS}.rsl_rl_ppo_cfg:G1RoughNoHeightScanPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="Isaac-Velocity-Parkour-G1-Hard-NoHeightScan-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.parkour_env_cfg:G1ParkourHardNoHeightScanEnvCfg",
+        "rsl_rl_cfg_entry_point": f"{_AGENTS}.rsl_rl_ppo_cfg:G1ParkourHardNoHeightScanPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="Isaac-Velocity-Rough-G1-NoHeightScan-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.parkour_env_cfg:G1RoughNoHeightScanEnvCfg_PLAY",
+        "rsl_rl_cfg_entry_point": f"{_AGENTS}.rsl_rl_ppo_cfg:G1RoughNoHeightScanPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="Isaac-Velocity-Parkour-G1-Easy-NoHeightScan-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.parkour_env_cfg:G1ParkourEasyNoHeightScanEnvCfg_PLAY",
+        "rsl_rl_cfg_entry_point": f"{_AGENTS}.rsl_rl_ppo_cfg:G1ParkourHardNoHeightScanPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="Isaac-Velocity-Parkour-G1-Medium-NoHeightScan-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.parkour_env_cfg:G1ParkourMediumNoHeightScanEnvCfg_PLAY",
+        "rsl_rl_cfg_entry_point": f"{_AGENTS}.rsl_rl_ppo_cfg:G1ParkourHardNoHeightScanPPORunnerCfg",
+    },
+)
+
+gym.register(
+    id="Isaac-Velocity-Parkour-G1-Hard-NoHeightScan-Play-v0",
+    entry_point="isaaclab.envs:ManagerBasedRLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": f"{__name__}.parkour_env_cfg:G1ParkourHardNoHeightScanEnvCfg_PLAY",
+        "rsl_rl_cfg_entry_point": f"{_AGENTS}.rsl_rl_ppo_cfg:G1ParkourHardNoHeightScanPPORunnerCfg",
+    },
+)
+
+##
 # ROUGH MDP
 ##
 
