@@ -22,7 +22,7 @@
 \maketitle
 
 \begin{abstract}
-This project builds a custom parkour-oriented velocity-tracking task for the Unitree G1 robot in Isaac Lab. Starting from the official manager-based G1 rough locomotion task, I define three increasingly difficult terrain tiers, train PPO policies with RSL-RL, and evaluate them with survival, traversal-progress, and geometry-aware obstacle-crossing metrics. The results show a clear curriculum effect: easy terrain is stable but narrow, medium terrain is the first tier that transfers strongly to hard terrain, and hard terrain gives the most robust source policy. A reward-shaping ablation further shows that adding parkour-progress and foothold-safety terms to rough-terrain training improves hard-terrain timeout from 29.69\% to 70.31\% without parkour terrain exposure. Overall, the project provides a reproducible task package and evaluation pipeline for studying humanoid obstacle locomotion.
+This project builds a custom parkour-oriented velocity-tracking task for the Unitree G1 robot in Isaac Lab. Starting from the official manager-based G1 rough locomotion task, I define three increasingly difficult terrain tiers, train PPO policies with RSL-RL, and evaluate them with survival, traversal-progress, and geometry-aware obstacle-crossing metrics. The results show a clear curriculum effect: easy terrain is stable but narrow, medium terrain is the first tier that transfers strongly to hard terrain, and hard terrain gives the most robust source policy. Ablations further show that reward shaping improves rough-to-hard transfer, while the height-scanner ablation has a non-monotonic effect: no-scan policies remain competitive on moderate stress terrains but collapse to 0\% timeout and obstacle crossing on hard stress terrain. Overall, the project provides a reproducible task package and evaluation pipeline for studying humanoid obstacle locomotion.
 \end{abstract}
 
 \section{Introduction}
@@ -41,6 +41,7 @@ The main contributions are:
     \item a unified evaluation pipeline with timeout, traversal-progress, and obstacle-crossing metrics;
     \item a terrain difficulty ablation across flat, rough, easy, medium, and hard settings;
     \item a reward-shaping MDP ablation using parkour-progress and foothold-safety rewards;
+    \item a height-scanner observation ablation that removes terrain height-scan input from rough and hard policies;
     \item an additional ExtremeRandom out-of-distribution stress evaluation for hard and hard-MDP policies.
 \end{itemize}
 
@@ -50,7 +51,7 @@ The main contributions are:
 
 \subsection{Framework and task objective}
 
-This task is built on Isaac Lab's manager-based Unitree G1 rough velocity-tracking environment~\citep{mittal2025isaaclab}. The inherited environment provides the robot model, low-level joint-position actuation interface, proprioceptive observations, height-scan sensing, terrain curriculum machinery, and base-contact failure termination. The project keeps this locomotion interface and velocity-tracking task formulation fixed, and studies whether terrain curriculum and reward changes improve obstacle robustness.
+This task is built on Isaac Lab's manager-based Unitree G1 rough velocity-tracking environment~\citep{mittal2025isaaclab}. The inherited environment provides the robot model, low-level joint-position actuation interface, proprioceptive observations, height-scan sensing, terrain curriculum machinery, and base-contact failure termination. The project keeps this locomotion interface and velocity-tracking task formulation fixed, and studies how terrain curriculum, reward design, and terrain sensing affect obstacle robustness.
 
 The concrete task objective is to train a policy that drives the robot forward across a generated terrain tile while remaining balanced and tracking the commanded base velocity. In the original Isaac Lab G1 rough training configuration, the command is not a full planar translational velocity: the forward velocity is sampled from
 \(\texttt{lin\_vel\_x} \in [0.0, 1.0]\), the lateral velocity is fixed to
@@ -117,6 +118,8 @@ The cost is
 \end{equation}
 Here $c_t^{\mathrm{slide}}$ penalizes foot sliding while a foot is in contact, $c_t^{\mathrm{drop}}$ penalizes support points that drop far below the base as a proxy for edge or gap stepping, and $c_t^{\mathrm{mismatch}}$ penalizes large height differences between simultaneously contacting feet.
 
+The height-scanner ablation changes the observation space. It removes both the height-scanner sensor and the corresponding policy observation term, while keeping the robot, action space, terrain family, PPO runner, and evaluation protocol otherwise unchanged. I train two no-height-scan policies: one on official rough terrain and one on hard parkour terrain.
+
 \subsection{Parkour terrain curriculum}
 
 The parkour curriculum replaces the official rough terrain generator with three terrain presets. Each preset mixes structured terrain components such as stairs, boxes, rough patches, slopes, and, for medium and hard tiers, gaps. The key difficulty ranges are summarized in \Cref{tab:terrain-curriculum}.
@@ -144,7 +147,7 @@ The evaluation pipeline reports three success criteria. Timeout success means an
 \section{Experimental protocol}
 \label{sec:setup}
 
-The report uses seven trained policies in total: two official Isaac Lab baselines, three custom parkour terrain policies, and two reward-shaping MDP variants. The main 4-by-4 cross-terrain matrices compare the rough, easy, medium, and hard checkpoints. The flat policy is used as a reference baseline, while the MDP variants are analyzed in \Cref{sec:ablations}.
+The report uses nine trained policies in total: two official Isaac Lab baselines, three custom parkour terrain policies, two reward-shaping MDP variants, and two no-height-scan variants. The main 4-by-4 cross-terrain matrices compare the rough, easy, medium, and hard checkpoints. The flat policy is used as a reference baseline, while the MDP and height-scanner variants are analyzed in \Cref{sec:ablations}.
 
 The main comparison evaluates how policies trained on different source environments transfer to different evaluation terrains. Each 4-by-4 source checkpoint is evaluated on rough, easy, medium, and hard play environments. I use two cross-terrain protocols: a random protocol that samples terrain type and difficulty inside the terrain grid, and a fixed-row stress protocol that pins all environments to the highest difficulty row. Unless otherwise noted, each cross/stress evaluation uses 64 episodes, 32 parallel environments, and seed 42.
 
@@ -390,12 +393,54 @@ Since both Hard and Hard MDP achieve near-perfect performance in the standard ob
     \label{fig:extreme}
 \end{figure}
 
+\subsection{Height-scanner ablation}
+
+The height-scanner ablation evaluates whether exteroceptive terrain information is necessary for parkour transfer. I remove the height scanner during both training and evaluation, and train two policies: \texttt{rough\_no\_height\_scan} on official rough terrain and \texttt{hard\_no\_height\_scan} on hard parkour terrain. The comparison uses the same fixed-row stress protocol as the main cross-terrain evaluation.
+
+\begin{table}[t]
+    \caption{\textbf{Height-scanner ablation timeout rate under fixed-row stress.} No-scan policies remove terrain height-scan observations during both training and evaluation.}
+    \label{tab:height-scan-timeout}
+    \centering
+    \begin{tabular}{lcccc}
+        \toprule
+        Policy & Eval rough & Eval easy & Eval medium & Eval hard \\
+        \midrule
+        Rough & 98.44\% & 78.12\% & 56.25\% & 31.25\% \\
+        Rough no scan & 100.00\% & 100.00\% & 90.62\% & 0.00\% \\
+        Hard & 100.00\% & 100.00\% & 96.88\% & 95.31\% \\
+        Hard no scan & 98.44\% & 100.00\% & 96.88\% & 0.00\% \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[t]
+    \caption{\textbf{Height-scanner ablation obstacle-crossing rate under fixed-row stress.} Obstacle crossing is evaluated on supported gap and stairs terrain groups.}
+    \label{tab:height-scan-obstacle}
+    \centering
+    \begin{tabular}{lcccc}
+        \toprule
+        Policy & Eval rough & Eval easy & Eval medium & Eval hard \\
+        \midrule
+        Rough & 88.46\% & 88.46\% & 16.39\% & 25.00\% \\
+        Rough no scan & 100.00\% & 100.00\% & 29.17\% & 0.00\% \\
+        Hard & 100.00\% & 100.00\% & 87.50\% & 100.00\% \\
+        Hard no scan & 100.00\% & 100.00\% & 40.43\% & 0.00\% \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\Cref{tab:height-scan-timeout,tab:height-scan-obstacle} show a non-monotonic effect of removing the height scanner. On rough, easy, and medium stress terrain, the no-scan policies do not consistently perform worse. Rough no scan even outperforms the rough baseline on these three environments in both timeout and obstacle-crossing rate, including an increase in medium stress timeout from 56.25\% to 90.62\%. Hard no scan also remains close to Hard on rough and easy terrain, and preserves the same 96.88\% medium timeout rate, although its medium obstacle-crossing rate drops substantially from 87.50\% to 40.43\%.
+
+This result suggests that height-scan sensing is not uniformly beneficial for every moderate-terrain survival metric. On simpler or moderately difficult terrains, removing the scanner may reduce observation complexity and encourage a more conservative blind gait, which can be sufficient for staying upright. However, this interpretation does not mean that height sensing is unnecessary for parkour. On hard stress terrain, both no-scan policies collapse completely: timeout, traversal progress, and obstacle crossing all drop to 0.00\%. Thus, the height scanner appears most important when the policy must adapt to hard geometric discontinuities such as difficult gaps and stairs, where proprioception alone is insufficient.
+
 \section{Discussion}
 \label{sec:discussion}
 
 The results show that terrain exposure is the main driver of parkour robustness. Flat and rough policies validate the inherited locomotion stack, but rough and easy policies do not transfer reliably to medium or hard obstacles. Medium parkour is the first completed tier with strong hard-terrain survival transfer, while the obstacle metric still exposes limited hard-gap competence. Hard parkour remains the strongest source policy.
 
 The MDP ablation shows a complementary effect of reward design. Rough MDP substantially improves hard-terrain transfer without parkour terrain exposure, suggesting that the inherited velocity-tracking reward alone underuses available terrain information. On hard terrain, the additional foothold-safety cost makes the policy more conservative: it reduces raw forward speed but improves tracking precision and out-of-distribution obstacle crossing.
+
+The height-scanner ablation separates moderate-terrain survival from geometry-aware obstacle crossing. Removing height-scan observations can preserve, and in some rough-policy cases even improve, timeout and obstacle-crossing rates on rough, easy, and medium stress terrain. A plausible explanation is that the no-scan policies learn a simpler conservative blind gait that is sufficient for moderate terrain and avoids potential over-reaction to height-scan inputs. This advantage is limited: on hard stress terrain, both no-scan policies fail completely. The scanner is therefore not uniformly helpful for every survival-style metric, but it is necessary for the hardest gap and stairs cases where proprioception alone does not provide enough terrain information.
 
 The main limitation is metric semantics. Timeout measures survival, traversal progress checks forward movement, and obstacle crossing checks base-level boundary completion. These are sufficient for the current terrain generator, but they do not directly measure foot-contact quality, exact foothold placement, or mesh-level contact safety. Future work should therefore add stricter contact-aware metrics, broader out-of-distribution obstacle layouts, and optionally motion-prior methods such as AMP/SMP-style regularization.
 
@@ -406,7 +451,8 @@ This project implements a reproducible parkour locomotion pipeline for Unitree G
 \begin{itemize}[leftmargin=*,noitemsep,nolistsep,topsep=0pt]
     \item easy, medium, and hard terrain form a clear difficulty gradient, and hard training gives the strongest overall source checkpoint;
     \item medium training transfers well by survival metrics, but obstacle crossing shows that hard gaps still require harder terrain exposure;
-    \item MDP reward shaping improves rough-to-hard timeout from 29.69\% to 70.31\% without parkour terrain exposure, while Hard MDP further improves precision and ExtremeRandom obstacle crossing.
+    \item MDP reward shaping improves rough-to-hard timeout from 29.69\% to 70.31\% without parkour terrain exposure, while Hard MDP further improves precision and ExtremeRandom obstacle crossing;
+    \item height-scan observations are not uniformly beneficial on moderate stress terrain, but they are critical for hard parkour: removing them drops hard-terrain stress timeout, traversal progress, and obstacle crossing to 0.00\% for both rough and hard no-scan policies.
 \end{itemize}
 Together, these results support the feasibility of using Isaac Lab's G1 rough locomotion stack as a base for structured humanoid parkour and provide a reproducible foundation for further navigation-style or foothold-aware extensions.
 
@@ -494,7 +540,7 @@ All completed training runs were executed on an AutoDL Linux GPU environment wit
 \Cref{tab:runs} summarizes the training runs used throughout this report.
 
 \begin{table}[h]
-    \caption{\textbf{Training runs.} All parkour and MDP policies are trained for 3000 PPO iterations.}
+    \caption{\textbf{Training runs.} All non-flat policies in this table are trained for 3000 PPO iterations.}
     \label{tab:runs}
     \centering
     \begin{tabular}{llc}
@@ -508,10 +554,14 @@ All completed training runs were executed on an AutoDL Linux GPU environment wit
         Parkour hard & custom hard parkour & 3000 \\
         Rough MDP & rough terrain with MDP rewards & 3000 \\
         Hard MDP & hard parkour with MDP rewards & 3000 \\
+        Rough no scan & rough terrain without height scan & 3000 \\
+        Hard no scan & hard parkour without height scan & 3000 \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-The official flat baseline uses \texttt{Isaac-Velocity-Flat-G1-v0}. The rough baseline uses \texttt{Isaac-Velocity-Rough-G1-v0} and is the direct parent of all parkour tasks. The three parkour training tasks are \texttt{Isaac-Velocity-Parkour-G1-Easy-v0}, \texttt{Isaac-Velocity-Parkour-G1-Medium-v0}, and \texttt{Isaac-Velocity-Parkour-G1-Hard-v0}; each has a corresponding play task for visualization and evaluation. The MDP variants are \texttt{Isaac-Velocity-Rough-G1-MDP-v0} and \texttt{Isaac-Velocity-Parkour-G1-Hard-MDP-v0}. Implementation files are concentrated in the environment configuration, terrain configuration, MDP override, and evaluation modules of the task package.
+The official flat baseline uses \texttt{Isaac-Velocity-Flat-G1-v0}. The rough baseline uses \texttt{Isaac-Velocity-Rough-G1-v0} and is the direct parent of all parkour tasks. The three parkour training tasks are \texttt{Isaac-Velocity-Parkour-G1-Easy-v0}, \texttt{Isaac-Velocity-Parkour-G1-Medium-v0}, and \texttt{Isaac-Velocity-Parkour-G1-Hard-v0}; each has a corresponding play task for visualization and evaluation. The MDP variants are \texttt{Isaac-Velocity-Rough-G1-MDP-v0} and \texttt{Isaac-Velocity-Parkour-G1-Hard-MDP-v0}. The height-scanner ablation uses \texttt{Isaac-Velocity-Rough-G1-NoHeightScan-v0} and \texttt{Isaac-Velocity-Parkour-G1-Hard-NoHeightScan-v0}, with matching no-height-scan play tasks for rough, easy, medium, and hard stress evaluation. Implementation files are concentrated in the environment configuration, terrain configuration, MDP override, height-scanner ablation registration, and evaluation modules of the task package.
+
+The height-scanner ablation results used in \Cref{tab:height-scan-timeout,tab:height-scan-obstacle} are stored in \texttt{results/metrics/height\_scanner\_ablation\_timeout\_stress\_eval.csv}, \texttt{results/metrics/height\_scanner\_ablation\_progress\_stress\_eval.csv}, and \texttt{results/metrics/height\_scanner\_ablation\_obstacle\_stress\_eval.csv}.
 
 \end{document}
