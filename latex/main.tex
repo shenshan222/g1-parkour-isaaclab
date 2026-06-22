@@ -56,7 +56,7 @@ This task is built on Isaac Lab's manager-based Unitree G1 rough velocity-tracki
 The concrete task objective is to train a policy that drives the robot forward across a generated terrain tile while remaining balanced and tracking the commanded base velocity. In the original Isaac Lab G1 rough training configuration, the command is not a full planar translational velocity: the forward velocity is sampled from
 \(\texttt{lin\_vel\_x} \in [0.0, 1.0]\), the lateral velocity is fixed to
 \(\texttt{lin\_vel\_y} = 0\), and the yaw-rate command is sampled from
-\(\texttt{ang\_vel\_z} \in [-1.0, 1.0]\). The parkour environments inherit this command structure.
+\(\texttt{ang\_vel\_z} \in [-1.0, 1.0]\). The linear velocity command is interpreted in the gravity-aligned yaw frame of the robot base. The parkour environments inherit this command structure.
 
 A successful parkour policy should satisfy three requirements simultaneously: it should avoid falling, track the forward and yaw components of the velocity command reasonably well, and make forward progress across terrain discontinuities such as stairs, boxes, slopes, and gaps.
 
@@ -101,7 +101,7 @@ On top of these inherited rough-locomotion terms, parkour training adds a forwar
     \qquad
     w_p = 0.5,
 \end{equation}
-where $v_{x,t}^{w}$ is the base velocity along the world $x$ axis. This term is deliberately simple: it does not identify individual obstacles, but it biases the policy toward traversing the terrain rather than only surviving in place.
+Here, the superscript $w$ emphasizes that the progress term is defined in the world frame. This is different from the inherited linear velocity-tracking reward, which compares the command with the base linear velocity expressed in the gravity-aligned yaw frame of the robot base. In the G1 rough configuration, the lateral command is fixed to zero, so the inherited task mainly tracks forward velocity and yaw rate. The world-frame progress term is therefore not a replacement for command tracking; it is an additional traversal bias that rewards motion along the terrain-forward $x$ direction. When the robot yaw deviates from the terrain-forward direction, this term can trade off against strict command tracking, so tracking error is reported separately in the experiments.
 
 
 The MDP ablation adds a foothold-safety cost while keeping the robot, observations, action space, terrain generator, PPO algorithm, and evaluation protocol fixed:
